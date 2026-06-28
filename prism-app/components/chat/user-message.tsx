@@ -17,7 +17,7 @@ export function UserMessage({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={src || '/placeholder.svg'}
-                alt={`Uploaded clinical image ${i + 1}`}
+                alt={`Uploaded document image ${i + 1}`}
                 className="size-full object-cover"
               />
             </div>

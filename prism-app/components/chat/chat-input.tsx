@@ -80,7 +80,7 @@ export function ChatInput({
     const trimmed = value.trim()
     if (!trimmed && attachments.length === 0) return
     onSend?.(
-      trimmed || 'Analyze the attached clinical records.',
+      trimmed || 'Analyze the attached documents.',
       attachments.map((a) => a.url),
     )
     setValue('')
@@ -154,7 +154,7 @@ export function ChatInput({
               <ImagePlus className="size-4" aria-hidden="true" />
             </span>
             <span className="text-sm font-medium text-foreground/90">
-              Drop clinical images or click to upload
+              Drop document images or click to upload
             </span>
             <span className="font-mono text-[11px] text-muted-foreground">
               PNG, JPG · multiple files supported

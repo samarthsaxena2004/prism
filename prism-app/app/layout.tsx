@@ -14,8 +14,8 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "PRISM — Medical Document Intelligence",
-  description: "Five AI agents that digitize handwritten medical records in seconds. Powered by Gemma 4 31B on Cerebras.",
+  title: "PRISM — Enterprise Document Intelligence",
+  description: "Five AI agents that digitize complex handwritten documents in seconds. Powered by Gemma 4 31B on Cerebras.",
 };
 
 export default function RootLayout({

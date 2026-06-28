@@ -15,7 +15,7 @@ const spring = { type: 'spring' as const, stiffness: 300, damping: 30 }
 
 const INITIAL_PIPELINE: Agent[] = [
   { id: 'sage', name: 'Sage', role: 'Vision Extraction', status: 'pending', detail: 'Waiting...', accent: 'hsl(88, 44%, 59%)' },
-  { id: 'oracle', name: 'Oracle', role: 'Clinical Validation', status: 'pending', detail: 'Waiting...', accent: '#cc785c', group: 'parallel' },
+  { id: 'oracle', name: 'Oracle', role: 'Domain Validation', status: 'pending', detail: 'Waiting...', accent: '#cc785c', group: 'parallel' },
   { id: 'sentinel', name: 'Sentinel', role: 'Anomaly Detection', status: 'pending', detail: 'Waiting...', accent: 'hsl(36, 60%, 60%)', group: 'parallel' },
   { id: 'compass', name: 'Compass', role: 'Data Structuring', status: 'pending', detail: 'Waiting...', accent: 'hsl(278, 32%, 68%)' },
   { id: 'echo', name: 'Echo', role: 'Intelligence Brief', status: 'pending', detail: 'Waiting...', accent: 'hsl(12, 40%, 66%)' },
@@ -76,7 +76,7 @@ export function ChatInterface() {
     setMessages((prev) => [
       ...prev,
       { id: `u-${now}`, role: 'user', content: value, images },
-      { id: assistantId, role: 'assistant', status: 'Validating clinical records...', pipeline: JSON.parse(JSON.stringify(INITIAL_PIPELINE)), content: '' },
+      { id: assistantId, role: 'assistant', status: 'Validating documents...', pipeline: JSON.parse(JSON.stringify(INITIAL_PIPELINE)), content: '' },
     ])
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
@@ -238,13 +238,13 @@ export function ChatInterface() {
               className="w-full text-center"
             >
               <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--processing)]">
-                Clinical Intelligence
+                Enterprise Intelligence
               </span>
               <h1 className="mt-4 text-balance font-serif text-4xl font-medium leading-[1.05] tracking-tight text-foreground sm:text-5xl">
                 Think clearly, decide faster
               </h1>
               <p className="mx-auto mt-4 max-w-md text-pretty text-base leading-relaxed text-muted-foreground">
-                Prism routes your clinical images through a five-agent validation
+                Prism routes your document images through a five-agent validation
                 pipeline — extraction, validation, anomaly detection, structuring,
                 and briefing.
               </p>

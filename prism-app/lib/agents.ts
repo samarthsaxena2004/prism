@@ -26,7 +26,7 @@ export const pipeline: Agent[] = [
   {
     id: 'oracle',
     name: 'Oracle',
-    role: 'Clinical Validation',
+    role: 'Domain Validation',
     status: 'running',
     detail: 'Cross-referencing ICD-10 + lab ranges',
     accent: '#cc785c',
