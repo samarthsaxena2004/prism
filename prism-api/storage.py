@@ -34,13 +34,16 @@ async def upload_image(image_bytes: bytes, doc_id: str) -> str:
 async def save_document(doc_id: str, facility_name: str, form_type: str, image_url: str = None):
     """Create the initial document row."""
     def _insert():
-        _get_client().table("documents").insert({
-            "id": doc_id,
-            "facility_name": facility_name,
-            "form_type": form_type,
-            "raw_image_url": image_url,
-            "status": "processing",
-        }).execute()
+        try:
+            _get_client().table("documents").insert({
+                "id": doc_id,
+                "facility_name": facility_name,
+                "form_type": form_type,
+                "raw_image_url": image_url,
+                "status": "processing",
+            }).execute()
+        except Exception as e:
+            print(f"Failed to create document row: {e}")
 
     await asyncio.to_thread(_insert)
 
@@ -48,12 +51,15 @@ async def save_document(doc_id: str, facility_name: str, form_type: str, image_u
 async def save_agent_output(doc_id: str, agent: str, content: dict, ms: int):
     """Save individual agent output."""
     def _insert():
-        _get_client().table("agent_outputs").insert({
-            "document_id": doc_id,
-            "agent_name": agent,
-            "content": content,
-            "processing_time_ms": ms,
-        }).execute()
+        try:
+            _get_client().table("agent_outputs").insert({
+                "document_id": doc_id,
+                "agent_name": agent,
+                "content": content,
+                "processing_time_ms": ms,
+            }).execute()
+        except Exception as e:
+            print(f"Failed to save agent output ({agent}): {e}")
 
     await asyncio.to_thread(_insert)
 
