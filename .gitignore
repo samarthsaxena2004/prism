@@ -1,0 +1,29 @@
+# Backend
+prism-api/.env
+prism-api/venv/
+prism-api/.venv/
+prism-api/__pycache__/
+prism-api/**/__pycache__/
+prism-api/*.pyc
+prism-api/**/*.pyc
+
+# Frontend
+prism-app/node_modules/
+prism-app/.next/
+prism-app/.env.local
+prism-app/out/
+
+# Env files (never commit secrets)
+*.env
+.env.*
+!prism-api/.env.example
+!prism-app/.env.local.example
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Patient data — never commit
+/dialysis/
