@@ -8,27 +8,32 @@ interface Props {
 }
 
 export default function SpeedPanel({ cerebrasMs, geminiMs, cerebrasDone }: Props) {
-  const [geminiLive, setGeminiLive] = useState(0);
+  const [geminiLive, setGeminiLive] = useState(cerebrasMs);
   const geminiRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const geminiStart = useRef(Date.now());
+  // Calibrate to Cerebras start time on mount so both timers run in lockstep
+  const [startedAt] = useState(() => Date.now() - cerebrasMs);
 
-  // Keep Gemini timer running after Cerebras finishes (if Gemini hasn't responded yet)
+  // Start Gemini timer immediately when the panel mounts (same start as Cerebras)
   useEffect(() => {
-    if (cerebrasDone && geminiMs === null) {
-      geminiStart.current = Date.now() - cerebrasMs;
-      geminiRef.current = setInterval(() => {
-        setGeminiLive(Date.now() - geminiStart.current);
-      }, 100);
-    }
+    if (geminiMs !== null) return; // already have a real value
+    geminiRef.current = setInterval(() => {
+      setGeminiLive(Date.now() - startedAt);
+    }, 100);
     return () => {
       if (geminiRef.current) clearInterval(geminiRef.current);
     };
-  }, [cerebrasDone, geminiMs, cerebrasMs]);
+  }, [geminiMs, startedAt]); // only on mount or when geminiMs changes
+
+  // Stop the interval the moment Gemini's real time arrives
+  useEffect(() => {
+    if (geminiMs !== null && geminiRef.current) {
+      clearInterval(geminiRef.current);
+      geminiRef.current = null;
+    }
+  }, [geminiMs]);
 
   const cerebrasS = (cerebrasMs / 1000).toFixed(1);
-  const geminiS = geminiMs
-    ? (geminiMs / 1000).toFixed(1)
-    : (geminiLive / 1000).toFixed(1);
+  const geminiS = ((geminiMs ?? geminiLive) / 1000).toFixed(1);
   const geminiFinished = geminiMs !== null;
 
   return (

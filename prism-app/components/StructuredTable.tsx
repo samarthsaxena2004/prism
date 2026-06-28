@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import AnomalyBadge from "./AnomalyBadge";
 import IntelBrief from "./IntelBrief";
@@ -50,12 +50,7 @@ function tryParseCompass(text: string): StructuredData | null {
 }
 
 export default function StructuredTable({ compassContent, echoContent }: Props) {
-  const [data, setData] = useState<StructuredData | null>(null);
-
-  useEffect(() => {
-    const parsed = tryParseCompass(compassContent);
-    if (parsed) setData(parsed);
-  }, [compassContent]);
+  const data = useMemo(() => tryParseCompass(compassContent), [compassContent]);
 
   if (!data) return null;
 
