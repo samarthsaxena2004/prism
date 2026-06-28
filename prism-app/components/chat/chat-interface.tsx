@@ -160,7 +160,7 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-transparent">
       <ChatHeader />
 
       {active ? (
@@ -237,13 +237,13 @@ export function ChatInterface() {
               transition={spring}
               className="w-full text-center"
             >
-              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--processing)]">
+              <span className="inline-block text-[10px] tracking-[0.2em] uppercase font-mono text-muted-foreground border border-foreground px-3 py-2">
                 Enterprise Intelligence
               </span>
-              <h1 className="mt-4 text-balance font-serif text-4xl font-medium leading-[1.05] tracking-tight text-foreground sm:text-5xl">
+              <h1 className="mt-8 font-pixel text-4xl sm:text-5xl lg:text-6xl tracking-tight text-foreground select-none uppercase">
                 Think clearly, decide faster
               </h1>
-              <p className="mx-auto mt-4 max-w-md text-pretty text-base leading-relaxed text-muted-foreground">
+              <p className="mx-auto mt-6 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground font-mono">
                 Prism routes your document images through a five-agent validation
                 pipeline — extraction, validation, anomaly detection, structuring,
                 and briefing.
@@ -267,7 +267,7 @@ export function ChatInterface() {
         <motion.div
           layoutId="composer"
           transition={spring}
-          className="absolute bottom-0 left-0 right-0 border-t border-border bg-background/80 backdrop-blur-xl"
+          className="absolute bottom-0 left-0 right-0 border-t-2 border-foreground bg-background/90 backdrop-blur-xl"
         >
           <div className="mx-auto w-full max-w-3xl px-4 pb-5 pt-4">
             <ChatInput onSend={handleSend} docked processing={processing} />

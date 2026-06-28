@@ -126,37 +126,40 @@ export function ChatInput({
       <div
         aria-hidden="true"
         className={cn(
-          'input-glow pointer-events-none absolute -inset-px rounded-2xl blur-[3px] transition-opacity duration-700',
+          'input-glow pointer-events-none absolute -inset-1.5 rounded-3xl blur-[5px] transition-opacity duration-700',
           processing ? 'opacity-80' : 'opacity-0',
         )}
       />
 
-      <form
-        onSubmit={submit}
-        className={cn(
-          'relative rounded-2xl border bg-card shadow-sm transition-colors',
-          dragging ? 'border-[var(--processing)]' : 'border-border',
-        )}
-      >
+      <div className={cn(
+        "relative rounded-2xl transition-all",
+        dragging ? "p-[2px] bg-[var(--processing)]" : "p-[2px] blue-laser-glow"
+      )}>
+        <form
+          onSubmit={submit}
+          className={cn(
+            'relative rounded-[calc(var(--radius-2xl)-2px)] overflow-hidden bg-card transition-colors w-full h-full'
+          )}
+        >
         {/* Zero-state image dropzone */}
         {showDropzone ? (
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             className={cn(
-              'group m-2 mb-0 flex w-[calc(100%-1rem)] flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-7 text-center transition-colors',
+              'group m-2 mb-0 flex w-[calc(100%-1rem)] flex-col items-center justify-center gap-2 border-2 rounded-xl border-dashed px-4 py-7 text-center transition-colors',
               dragging
                 ? 'border-[var(--processing)] bg-[var(--processing)]/[0.07]'
-                : 'border-border hover:border-[var(--processing)]/50 hover:bg-secondary/60',
+                : 'border-foreground/40 hover:border-[var(--processing)]/50 hover:bg-secondary/60',
             )}
           >
-            <span className="flex size-9 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
+            <span className="flex size-9 items-center justify-center rounded-none bg-secondary border border-foreground text-foreground transition-colors group-hover:text-foreground">
               <ImagePlus className="size-4" aria-hidden="true" />
             </span>
-            <span className="text-sm font-medium text-foreground/90">
+            <span className="text-xs font-mono uppercase tracking-widest text-foreground/90">
               Drop document images or click to upload
             </span>
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               PNG, JPG · multiple files supported
             </span>
           </button>
@@ -182,7 +185,7 @@ export function ChatInput({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={spring}
-                    className="group relative size-14 overflow-hidden rounded-lg border border-border"
+                    className="group relative size-14 overflow-hidden border-2 rounded-lg border-foreground"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -215,10 +218,10 @@ export function ChatInput({
           onKeyDown={onKeyDown}
           rows={1}
           placeholder={
-            docked ? 'Reply to the console…' : 'Add a note for the agents…'
+            docked ? 'Reply to the console…' : 'ADD A NOTE FOR THE AGENTS…'
           }
           aria-label="Message input"
-          className="font-sans block max-h-52 w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+          className="font-mono block max-h-52 w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
         />
 
         <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5">
@@ -227,14 +230,14 @@ export function ChatInput({
               type="button"
               onClick={() => fileRef.current?.click()}
               aria-label="Attach image"
-              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="flex size-8 items-center justify-center rounded-lg border-2 border-transparent text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
             >
               <Paperclip className="size-4" aria-hidden="true" />
             </button>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden font-mono text-[11px] text-muted-foreground sm:inline">
+            <span className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:inline">
               Enter to send
             </span>
             <button
@@ -242,9 +245,9 @@ export function ChatInput({
               disabled={!canSend}
               aria-label="Send message"
               className={cn(
-                'flex size-8 items-center justify-center rounded-lg transition-all',
+                'flex size-8 items-center justify-center transition-all border-2 rounded-lg border-foreground',
                 canSend
-                  ? 'bg-primary text-primary-foreground hover:opacity-90'
+                  ? 'bg-[#ea580c] text-background hover:scale-105 active:scale-95'
                   : 'cursor-not-allowed bg-muted text-muted-foreground/50',
               )}
             >
@@ -253,6 +256,7 @@ export function ChatInput({
           </div>
         </div>
       </form>
+      </div>
     </div>
   )
 }

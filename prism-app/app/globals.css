@@ -239,6 +239,26 @@
     );
     animation: border-glow-pan 6.5s ease infinite;
   }
+  @keyframes blue-laser-pan {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .blue-laser-glow {
+    background: linear-gradient(
+      120deg,
+      #020617 0%,
+      #1e3a8a 35%,
+      #22d3ee 50%,
+      #1e3a8a 65%,
+      #020617 100%
+    );
+    background-size: 200% 200%;
+    animation: blue-laser-pan 1.5s linear infinite;
+    box-shadow: 0 0 10px 2px rgba(34, 211, 238, 0.25), inset 0 0 3px 1px rgba(34, 211, 238, 0.1);
+  }
+
 
   /* Soft breathing pulse for active status icons */
   @keyframes breathe {
@@ -317,7 +337,6 @@
   --border: hsl(0 0% 75%);
   --input: hsl(0 0% 75%);
   --ring: hsl(0 0% 4%);
-  --radius: 0rem;
 }
 
 .dark .theme-brutalist {
