@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Inter, Fraunces, JetBrains_Mono } from "next/font/google";
+import { GeistPixelGrid } from "geist/font/pixel";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -10,6 +11,11 @@ const inter = Inter({
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -24,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${GeistPixelGrid.variable} antialiased`} suppressHydrationWarning>
       <body className="min-h-dvh flex flex-col bg-background text-foreground font-sans">
         <ThemeProvider
           attribute="class"
