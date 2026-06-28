@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, Asterisk, Moon, Sun } from 'lucide-react'
+import { Activity, Cpu, Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/hooks/use-theme'
 
 export function ChatHeader() {
@@ -8,24 +8,24 @@ export function ChatHeader() {
 
   if (!mounted) {
     return (
-      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-10 border-b-2 border-foreground bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Asterisk
-              className="size-5 text-[var(--processing)]"
-              strokeWidth={2.5}
+          <div className="flex items-center gap-3">
+            <Cpu
+              className="size-4"
+              strokeWidth={1.5}
               aria-hidden="true"
             />
-            <p className="font-serif text-xl font-medium tracking-tight text-foreground">
-              Prism
-            </p>
+            <span className="text-xs font-mono tracking-[0.15em] uppercase font-bold text-foreground">
+              SYS.INT
+            </span>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1">
+          <div className="flex items-center gap-2 border-2 border-foreground bg-card px-3 py-1">
             <Activity
               className="size-3 text-[var(--success)]"
               aria-hidden="true"
             />
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground">
               5 agents online
             </span>
           </div>
@@ -35,24 +35,24 @@ export function ChatHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-10 border-b-2 border-foreground bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <Asterisk
-            className="size-5 text-[var(--processing)]"
-            strokeWidth={2.5}
+        <div className="flex items-center gap-3">
+          <Cpu
+            className="size-4"
+            strokeWidth={1.5}
             aria-hidden="true"
           />
-          <p className="font-serif text-xl font-medium tracking-tight text-foreground">
-            Prism
-          </p>
+          <span className="text-xs font-mono tracking-[0.15em] uppercase font-bold text-foreground">
+            SYS.INT
+          </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3">
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="flex size-8 items-center justify-center border-2 border-transparent text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
           >
             {theme === 'light' ? (
               <Moon className="size-4" aria-hidden="true" />
@@ -60,12 +60,12 @@ export function ChatHeader() {
               <Sun className="size-4" aria-hidden="true" />
             )}
           </button>
-          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1">
+          <div className="flex items-center gap-2 border-2 border-foreground bg-card px-3 py-1">
             <Activity
               className="size-3 text-[var(--success)]"
               aria-hidden="true"
             />
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground">
               5 agents online
             </span>
           </div>

@@ -12,7 +12,7 @@ export function UserMessage({
           {images.map((src, i) => (
             <div
               key={`${src}-${i}`}
-              className="size-20 overflow-hidden rounded-xl border border-border"
+              className="size-20 overflow-hidden border-2 rounded-xl border-foreground bg-background"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -25,8 +25,8 @@ export function UserMessage({
         </div>
       ) : null}
 
-      <div className="max-w-[85%] rounded-2xl rounded-br-md border border-border bg-card px-4 py-2.5 shadow-sm sm:max-w-[75%]">
-        <p className="text-sm leading-relaxed text-card-foreground">
+      <div className="max-w-[85%] border-2 rounded-2xl border-foreground bg-card px-4 py-2.5 sm:max-w-[75%]">
+        <p className="text-sm leading-relaxed text-card-foreground font-mono">
           {content}
         </p>
       </div>

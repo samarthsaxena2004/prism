@@ -21,7 +21,7 @@ export function AiMessage({ status, content, pipeline }: AiMessageProps) {
 
   return (
     <div className="flex w-full gap-3">
-      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border-2 border-foreground bg-card">
         <Sparkles
           className="size-3.5 text-[var(--processing)]"
           aria-hidden="true"
@@ -35,8 +35,8 @@ export function AiMessage({ status, content, pipeline }: AiMessageProps) {
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           className={cn(
-            'group flex w-full items-center gap-2.5 rounded-lg border border-transparent px-2 py-1.5 text-left transition-colors',
-            'hover:border-border hover:bg-secondary/60',
+            'group flex w-full items-center gap-2.5 rounded-lg border-2 border-transparent px-2 py-1.5 text-left transition-colors',
+            'hover:border-foreground/50 hover:bg-secondary/60',
           )}
         >
           {running ? (
@@ -50,10 +50,10 @@ export function AiMessage({ status, content, pipeline }: AiMessageProps) {
               aria-hidden="true"
             />
           )}
-          <span className="flex-1 truncate text-sm font-medium text-foreground/90">
+          <span className="flex-1 truncate text-xs font-mono uppercase font-bold text-foreground/90">
             {status}
           </span>
-          <span className="hidden font-mono text-[11px] text-muted-foreground sm:inline">
+          <span className="hidden font-mono text-[10px] tracking-widest uppercase text-muted-foreground sm:inline">
             {expanded ? 'Hide' : 'Details'}
           </span>
           <ChevronDown
@@ -82,7 +82,7 @@ export function AiMessage({ status, content, pipeline }: AiMessageProps) {
         </AnimatePresence>
 
         {content ? (
-          <p className="mt-3 px-2 text-sm leading-relaxed text-foreground/85">
+          <p className="mt-3 px-2 text-sm leading-relaxed text-foreground/85 font-mono">
             {content}
           </p>
         ) : null}
