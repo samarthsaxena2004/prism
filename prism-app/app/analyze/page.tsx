@@ -1,5 +1,5 @@
-import InvestigationRoom from "@/components/InvestigationRoom";
+import { ChatInterface } from "@/components/chat/chat-interface";
 
 export default function AnalyzePage() {
-  return <InvestigationRoom />;
+  return <ChatInterface />;
 }
