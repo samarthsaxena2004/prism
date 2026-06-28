@@ -48,7 +48,7 @@ export function TemplateCards() {
 
   return (
     <div className="mt-12 w-full flex flex-col items-center">
-      <p className="font-serif text-sm text-muted-foreground mb-8">
+      <p className="font-mono uppercase text-[11px] tracking-widest text-muted-foreground mb-8">
         Start with a template...
       </p>
 
@@ -84,10 +84,10 @@ export function TemplateCards() {
                 damping: 25,
                 mass: 0.8,
               }}
-              className={`absolute w-36 h-32 rounded-xl border flex flex-col items-center justify-center p-3 cursor-pointer shadow-sm
+              className={`absolute w-36 h-32 rounded-xl border-2 flex flex-col items-center justify-center p-3 cursor-pointer transition-shadow
                 ${isHovered 
-                  ? 'bg-card border-blue-400 ring-4 ring-blue-400/20 shadow-xl' 
-                  : 'bg-[#F2EFEA] dark:bg-muted border-black/5 dark:border-white/5 hover:border-black/10'
+                  ? 'bg-card border-foreground shadow-[4px_4px_0_0_var(--color-foreground)]' 
+                  : 'bg-card border-foreground/30 hover:border-foreground/60 hover:shadow-[2px_2px_0_0_var(--color-foreground)]'
                 }`}
             >
               <div 
@@ -100,7 +100,7 @@ export function TemplateCards() {
                   strokeWidth={2}
                 />
               </div>
-              <p className="font-serif text-[13px] font-semibold text-foreground text-center leading-tight">
+              <p className="font-mono text-[10px] uppercase tracking-widest font-bold text-foreground text-center leading-tight mt-1">
                 {template.label}
               </p>
             </motion.button>
@@ -108,7 +108,7 @@ export function TemplateCards() {
         })}
       </div>
 
-      <p className="mt-12 font-serif text-sm text-muted-foreground">
+      <p className="mt-12 font-mono uppercase text-[11px] tracking-widest text-muted-foreground">
         ...or start a blank project &rarr;
       </p>
     </div>

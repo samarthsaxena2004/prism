@@ -78,9 +78,9 @@ function AgentRow({ agent }: { agent: Agent }) {
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <p className="font-mono text-[13px] font-medium tracking-tight text-foreground">
+          <p className="font-mono text-[13px] font-bold uppercase tracking-widest text-foreground">
             {agent.name}
-            <span className="ml-2 font-sans text-xs font-normal text-muted-foreground">
+            <span className="ml-2 font-mono uppercase tracking-widest text-[10px] font-normal text-muted-foreground">
               {agent.role}
             </span>
           </p>
@@ -144,8 +144,8 @@ export function ExecutionPanel({ pipeline }: { pipeline: Agent[] }) {
   const completed = pipeline.filter((a) => a.status === 'completed').length
 
   return (
-    <div className="mt-2.5 overflow-hidden rounded-xl border border-border bg-[var(--elevated)] shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+    <div className="mt-2.5 overflow-hidden rounded-xl border-2 border-foreground bg-card">
+      <div className="flex items-center justify-between border-b-2 border-foreground px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span
             className="size-1.5 rounded-full bg-[var(--success)]"
