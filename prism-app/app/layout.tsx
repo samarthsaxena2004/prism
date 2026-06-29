@@ -38,6 +38,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <div className="bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400 text-center py-2 px-4 text-xs font-mono border-b border-orange-500/20 flex items-center justify-center gap-2">
+            <span>⚠️</span>
+            <strong>BETA NOTICE:</strong> 
+            This demonstration heavily relies on the Cerebras Gemma-4-31b beta model. You may experience downtime or rate-limits. Not for production use.
+          </div>
           {children}
         </ThemeProvider>
       </body>
