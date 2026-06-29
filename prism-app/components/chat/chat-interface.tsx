@@ -10,6 +10,8 @@ import { ChatInput } from './chat-input'
 import { TemplateCards } from './template-cards'
 import SpeedPanel from '../SpeedPanel'
 import StructuredTable from '../StructuredTable'
+import InsightPanel from '../InsightPanel'
+import { type Insights } from '@/lib/export'
 
 const spring = { type: 'spring' as const, stiffness: 300, damping: 30 }
 
@@ -27,16 +29,23 @@ export function ChatInterface() {
   
   const [processing, setProcessing] = useState(false)
   const [done, setDone] = useState(false)
+  const [cerebrasDone, setCerebrasDone] = useState(false)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [geminiMs, setGeminiMs] = useState<number | null>(null)
+  const [geminiFailed, setGeminiFailed] = useState(false)
   const [docId, setDocId] = useState<string | null>(null)
-  
+  const [insights, setInsights] = useState<Insights | null>(null)
+
   const [compassContent, setCompassContent] = useState('')
   const [echoContent, setEchoContent] = useState('')
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
+  // Set when the Cerebras pipeline finishes so the `finally` (which runs only
+  // when the SSE stream closes — i.e. after the GPU baseline too) does not
+  // overwrite the frozen Cerebras time with the longer total stream duration.
+  const cerebrasDoneRef = useRef(false)
 
   const active = messages.length > 0
 
@@ -47,11 +56,15 @@ export function ChatInterface() {
   const reset = useCallback(() => {
     abortRef.current?.abort()
     if (timerRef.current) clearInterval(timerRef.current)
+    cerebrasDoneRef.current = false
     setElapsedMs(0)
     setGeminiMs(null)
+    setGeminiFailed(false)
     setProcessing(false)
     setDone(false)
+    setCerebrasDone(false)
     setDocId(null)
+    setInsights(null)
     setCompassContent('')
     setEchoContent('')
   }, [])
@@ -137,8 +150,28 @@ export function ChatInterface() {
                   if (ev.agent === 'echo') newStatusMsg = 'Analysis Complete.'
                 } else if (ev.type === 'timing' && agentIdx >= 0) {
                   // Ignore for now in pipeline UI
-                } else if (ev.type === 'speed_data' && ev.gemini_ms) {
-                  setGeminiMs(ev.gemini_ms)
+                } else if (ev.type === 'insights') {
+                  setInsights(ev.data as Insights)
+                } else if (ev.type === 'pipeline_done') {
+                  // Cerebras pipeline finished — freeze its timer at the real
+                  // pipeline time and reveal results, while the GPU keeps running.
+                  cerebrasDoneRef.current = true
+                  if (timerRef.current) clearInterval(timerRef.current)
+                  if (typeof ev.total_ms === 'number') setElapsedMs(ev.total_ms)
+                  setCerebrasDone(true)
+                  if (ev.doc_id) setDocId(ev.doc_id)
+                  newStatusMsg = 'Analysis complete — GPU baseline still running...'
+                } else if (ev.type === 'speed_data') {
+                  if (ev.gemini_ms) setGeminiMs(ev.gemini_ms)
+                  else setGeminiFailed(true)
+                } else if (ev.type === 'error') {
+                  // Mark any still-running agent as finished so nothing spins forever.
+                  for (let k = 0; k < newPipeline.length; k++) {
+                    if (newPipeline[k].status === 'running') {
+                      newPipeline[k] = { ...newPipeline[k], status: 'completed', detail: 'Stopped' }
+                    }
+                  }
+                  newStatusMsg = `Pipeline error: ${ev.content ?? 'unknown error'}`
                 } else if (ev.type === 'complete') {
                   setDocId(ev.doc_id ?? null)
                 }
@@ -155,7 +188,9 @@ export function ChatInterface() {
       if (timerRef.current) clearInterval(timerRef.current)
       setProcessing(false)
       setDone(true)
-      setElapsedMs(Date.now() - startRef.current)
+      // Only fall back to wall-clock if the pipeline never reported its real
+      // finish time (e.g. an error) — otherwise keep the frozen Cerebras time.
+      if (!cerebrasDoneRef.current) setElapsedMs(Date.now() - startRef.current)
     }
   }
 
@@ -201,14 +236,33 @@ export function ChatInterface() {
                   <SpeedPanel
                     cerebrasMs={elapsedMs}
                     geminiMs={geminiMs}
-                    cerebrasDone={done}
+                    geminiFailed={geminiFailed}
+                    cerebrasDone={cerebrasDone || done}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
 
             <AnimatePresence>
-              {done && docId && (
+              {cerebrasDone && insights && docId && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="mt-8"
+                >
+                  <InsightPanel
+                    insights={insights}
+                    docId={docId}
+                    compassContent={compassContent}
+                    echoContent={echoContent}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {cerebrasDone && docId && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
