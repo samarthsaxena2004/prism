@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, Loader2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,11 @@ const spring = { type: 'spring' as const, stiffness: 300, damping: 30 }
 export function AiMessage({ status, content, pipeline }: AiMessageProps) {
   const [expanded, setExpanded] = useState(false)
   const running = pipeline.some((a) => a.status === 'running')
+
+  // Auto-expand when the pipeline starts so judges see agents without clicking
+  useEffect(() => {
+    if (running) setExpanded(true)
+  }, [running])
 
   return (
     <div className="flex w-full gap-3">
