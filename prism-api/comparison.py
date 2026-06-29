@@ -14,11 +14,13 @@ genai.configure(api_key=os.environ.get("GOOGLE_API_KEY", ""))
 
 async def run_gemini_baseline(image_b64: str):
     """
-    Runs the same Sage extraction prompt on Gemini 2.5 Flash.
+    Runs the same Sage extraction prompt on Gemini 2.5 Flash and measures it.
 
-    Returns elapsed milliseconds on success, or None if the call failed — so the
-    UI can show "baseline unavailable" rather than reporting a near-zero error
-    time that would dishonestly make the GPU look faster than Cerebras.
+    Returns {"ms": int, "tps": int | None} on success — both the wall-clock time
+    and the *measured* throughput (output tokens / wall-clock seconds, taken from
+    Gemini's own usage_metadata) — or None if the call failed, so the UI can show
+    "baseline unavailable" rather than a near-zero error time that would
+    dishonestly make the baseline look faster than Cerebras.
     """
     from prompts import SAGE_SYSTEM_PROMPT
 
@@ -29,7 +31,7 @@ async def run_gemini_baseline(image_b64: str):
         image_part = {"mime_type": "image/jpeg", "data": image_bytes}
 
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
+        response = await loop.run_in_executor(
             None,
             lambda: model.generate_content([SAGE_SYSTEM_PROMPT, image_part])
         )
@@ -37,4 +39,15 @@ async def run_gemini_baseline(image_b64: str):
         print(f"Gemini baseline failed: {e}")
         return None
 
-    return int((time.time() - start) * 1000)
+    elapsed_ms = int((time.time() - start) * 1000)
+
+    # Measured throughput from Gemini's own reported output token count.
+    tps = None
+    try:
+        out_tokens = response.usage_metadata.candidates_token_count
+        if out_tokens and elapsed_ms > 0:
+            tps = round(out_tokens / (elapsed_ms / 1000))
+    except Exception:
+        pass
+
+    return {"ms": elapsed_ms, "tps": tps}

@@ -5,10 +5,19 @@ interface Props {
   cerebrasMs: number;
   geminiMs: number | null;
   geminiFailed?: boolean;
+  cerebrasTps?: number | null;
+  geminiTps?: number | null;
   cerebrasDone: boolean;
 }
 
-export default function SpeedPanel({ cerebrasMs, geminiMs, geminiFailed = false, cerebrasDone }: Props) {
+export default function SpeedPanel({
+  cerebrasMs,
+  geminiMs,
+  geminiFailed = false,
+  cerebrasTps = null,
+  geminiTps = null,
+  cerebrasDone,
+}: Props) {
   const [geminiLive, setGeminiLive] = useState(cerebrasMs);
   const geminiRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Calibrate to Cerebras start time on mount so the baseline timer measures
@@ -46,7 +55,9 @@ export default function SpeedPanel({ cerebrasMs, geminiMs, geminiFailed = false,
       <div className="rounded-2xl border-2 border-success/30 bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-[10px] font-mono font-bold text-success tracking-widest">PRISM ON CEREBRAS</span>
-          <span className="text-[9px] text-success/70 font-mono">⚡ 1,500 TPS</span>
+          <span className="text-[9px] text-success/70 font-mono">
+            {cerebrasTps != null ? `⚡ ${cerebrasTps.toLocaleString()} tok/s measured` : "⚡ Cerebras"}
+          </span>
         </div>
         <div className="flex items-end gap-2">
           <span className="font-mono text-3xl font-bold text-success">{cerebrasS}s</span>
@@ -60,8 +71,10 @@ export default function SpeedPanel({ cerebrasMs, geminiMs, geminiFailed = false,
       {/* Gemini baseline panel */}
       <div className="rounded-2xl border-2 border-border bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] font-mono font-bold text-muted-foreground tracking-widest">SINGLE AGENT — GPU</span>
-          <span className="text-[9px] text-muted-foreground/70 font-mono">~ 100 TPS</span>
+          <span className="text-[10px] font-mono font-bold text-muted-foreground tracking-widest">1 AGENT — GEMINI 2.5 FLASH</span>
+          <span className="text-[9px] text-muted-foreground/70 font-mono">
+            {geminiTps != null ? `${geminiTps.toLocaleString()} tok/s measured` : "Google hosted"}
+          </span>
         </div>
         <div className="flex items-end gap-2">
           <span className={`font-mono text-3xl font-bold ${settled ? "text-muted-foreground" : "text-foreground"}`}>

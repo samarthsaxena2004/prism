@@ -173,16 +173,26 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
 
     # Cerebras pipeline is fully done — freeze its timer in the UI now and reveal
     # results, while the GPU baseline keeps running until it genuinely finishes.
-    yield {"type": "pipeline_done", "agent": "system", "total_ms": pipeline_ms, "doc_id": doc_id}
+    # `cerebras_tps` is the measured average throughput across agents (from each
+    # response's time_info), so the UI shows a real number, not a static claim.
+    yield {
+        "type": "pipeline_done", "agent": "system",
+        "total_ms": pipeline_ms, "doc_id": doc_id,
+        "cerebras_tps": insights.get("throughput_tps"),
+    }
 
     # ── Real GPU baseline result (measured, not faked) ────────────────
     # None means the baseline failed or never returned — the UI shows
     # "unavailable" rather than inventing a number.
     try:
-        gemini_ms = await asyncio.wait_for(gemini_task, timeout=GEMINI_MAX_WAIT_S)
+        gemini = await asyncio.wait_for(gemini_task, timeout=GEMINI_MAX_WAIT_S)
     except Exception:
-        gemini_ms = None
-    yield {"type": "speed_data", "gemini_ms": gemini_ms, "agent": "system"}
+        gemini = None
+    yield {
+        "type": "speed_data", "agent": "system",
+        "gemini_ms": gemini["ms"] if gemini else None,
+        "gemini_tps": gemini.get("tps") if gemini else None,
+    }
 
 
 # ── Streaming helpers ────────────────────────────────────────────────

@@ -33,6 +33,8 @@ export function ChatInterface() {
   const [elapsedMs, setElapsedMs] = useState(0)
   const [geminiMs, setGeminiMs] = useState<number | null>(null)
   const [geminiFailed, setGeminiFailed] = useState(false)
+  const [cerebrasTps, setCerebrasTps] = useState<number | null>(null)
+  const [geminiTps, setGeminiTps] = useState<number | null>(null)
   const [docId, setDocId] = useState<string | null>(null)
   const [insights, setInsights] = useState<Insights | null>(null)
 
@@ -60,6 +62,8 @@ export function ChatInterface() {
     setElapsedMs(0)
     setGeminiMs(null)
     setGeminiFailed(false)
+    setCerebrasTps(null)
+    setGeminiTps(null)
     setProcessing(false)
     setDone(false)
     setCerebrasDone(false)
@@ -126,6 +130,7 @@ export function ChatInterface() {
               cerebrasDoneRef.current = true
               if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
               if (typeof ev.total_ms === 'number') setElapsedMs(ev.total_ms)
+              if (typeof ev.cerebras_tps === 'number') setCerebrasTps(ev.cerebras_tps)
               setCerebrasDone(true)
               if (ev.doc_id) setDocId(ev.doc_id)
               continue
@@ -135,9 +140,13 @@ export function ChatInterface() {
               continue
             }
             if (ev.type === 'speed_data') {
-              // Real GPU baseline time (or failure) arrives here, after Gemini finishes.
-              if (ev.gemini_ms) setGeminiMs(ev.gemini_ms)
-              else setGeminiFailed(true)
+              // Real GPU baseline time + measured throughput (or failure) arrive here.
+              if (ev.gemini_ms) {
+                setGeminiMs(ev.gemini_ms)
+                if (typeof ev.gemini_tps === 'number') setGeminiTps(ev.gemini_tps)
+              } else {
+                setGeminiFailed(true)
+              }
               continue
             }
             if (ev.type === 'error') {
@@ -294,6 +303,8 @@ export function ChatInterface() {
                     cerebrasMs={elapsedMs}
                     geminiMs={geminiMs}
                     geminiFailed={geminiFailed}
+                    cerebrasTps={cerebrasTps}
+                    geminiTps={geminiTps}
                     cerebrasDone={cerebrasDone || done}
                   />
                 </motion.div>
