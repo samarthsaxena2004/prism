@@ -5,10 +5,14 @@ Execution order: SAGE → (ORACLE ∥ SENTINEL) → COMPASS → ECHO
 
 Each step yields SSE event dicts. See prism-api/CLAUDE.md for the full event schema.
 
-Cerebras streaming note: the SDK's stream() context manager is synchronous.
-We use asyncio.to_thread() to collect all chunks without blocking the event loop,
-then re-yield them so the frontend receives progressive text. This approach also
-lets us capture response.time_info for the required speed-metrics SSE events.
+Reliability contract: every agent ALWAYS emits a terminal `done` event, even if
+its Cerebras call fails — the streaming helpers below catch their own errors and
+fall back to a safe payload, mirroring the non-streaming agents. This guarantees
+the UI never leaves an agent spinning forever.
+
+Speed comparison: the Gemini baseline is fired at pipeline start and awaited to
+*real* completion at the end (no artificial timeout), so the GPU number shown in
+the UI is a genuine measured wall-clock time, never a fabricated counter.
 """
 
 import asyncio
@@ -21,9 +25,14 @@ from cerebras.cloud.sdk import Cerebras
 from agents.oracle import run_oracle
 from agents.sentinel import run_sentinel
 from storage import save_agent_output, save_record
+from insights import compute_insights
 from prompts import SAGE_SYSTEM_PROMPT, COMPASS_SYSTEM_PROMPT, ECHO_SYSTEM_PROMPT
 
 client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY", ""))
+
+# Hard ceiling on how long we keep the SSE stream open waiting for the GPU
+# baseline. It exists only so a hung third-party call can't wedge the request.
+GEMINI_MAX_WAIT_S = 90
 
 
 async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
@@ -42,6 +51,7 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
         else:
             yield {"agent": "sage", "type": "streaming", "content": event}
     sage_ms = int((time.time() - sage_start) * 1000)
+    timings["sage"] = sage_timing
 
     # Build a brief summary for the frontend to show in the agent detail line
     sage_summary = ""
@@ -72,6 +82,8 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
         run_sentinel(client, sage_result or {}),
     )
     oracle_ms = sentinel_ms = int((time.time() - parallel_start) * 1000)
+    timings["oracle"] = oracle_timing
+    timings["sentinel"] = sentinel_timing
 
     yield {
         "agent": "oracle", "type": "done",
@@ -104,6 +116,7 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
         else:
             yield {"agent": "compass", "type": "streaming", "content": event}
     compass_ms = int((time.time() - compass_start) * 1000)
+    timings["compass"] = compass_timing
 
     yield {"agent": "compass", "type": "done", "content": "", "ms": compass_ms, **compass_timing}
     if compass_timing:
@@ -123,12 +136,13 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
             echo_content += event
             yield {"agent": "echo", "type": "streaming", "content": event}
     echo_ms = int((time.time() - echo_start) * 1000)
+    timings["echo"] = echo_timing
 
     yield {"agent": "echo", "type": "done", "content": "", "ms": echo_ms, **echo_timing}
     if echo_timing:
         yield {"type": "timing", "agent": "echo", **echo_timing}
 
-    # ── Persist & finalize ────────────────────────────────────────────
+    # ── Persist ───────────────────────────────────────────────────────
     await save_record(
         doc_id=doc_id,
         sage=sage_result,
@@ -141,7 +155,9 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
 
 # ── Streaming helpers ────────────────────────────────────────────────
 # Use create() (non-streaming) so we can capture time_info, then re-yield
-# chunks to simulate token-by-token streaming on the frontend.
+# chunks to simulate token-by-token streaming on the frontend. Each helper
+# catches its own errors and still emits a final payload so the pipeline and
+# the UI always reach a terminal state.
 
 def _extract_timing(response) -> dict:
     try:
@@ -168,7 +184,7 @@ def _parse_json(text: str) -> dict:
 
 async def _sage_stream(image_b64: str):
     def _call():
-        response = client.chat.completions.create(
+        return client.chat.completions.create(
             model="gemma-4-31b",
             messages=[{
                 "role": "user",
@@ -179,16 +195,18 @@ async def _sage_stream(image_b64: str):
             }],
             max_tokens=2000,
         )
-        return response
 
-    response = await asyncio.to_thread(_call)
-    text = response.choices[0].message.content
+    try:
+        response = await asyncio.to_thread(_call)
+        text = response.choices[0].message.content or ""
+        timing = _extract_timing(response)
+    except Exception as e:
+        yield {"final": True, "data": {"raw_text": "", "error": str(e)}, "timing": {}}
+        return
 
-    # Simulate streaming — yield in 4-char chunks so the UI animates
     for i in range(0, len(text), 4):
         yield text[i:i + 4]
-
-    yield {"final": True, "data": _parse_json(text), "timing": _extract_timing(response)}
+    yield {"final": True, "data": _parse_json(text), "timing": timing}
 
 
 async def _compass_stream(sage, oracle, sentinel):
@@ -212,13 +230,17 @@ Now produce the clean structured output JSON."""
             max_tokens=2000,
         )
 
-    response = await asyncio.to_thread(_call)
-    text = response.choices[0].message.content
+    try:
+        response = await asyncio.to_thread(_call)
+        text = response.choices[0].message.content or ""
+        timing = _extract_timing(response)
+    except Exception as e:
+        yield {"final": True, "data": {"raw_text": "", "error": str(e)}, "timing": {}}
+        return
 
     for i in range(0, len(text), 4):
         yield text[i:i + 4]
-
-    yield {"final": True, "data": _parse_json(text), "timing": _extract_timing(response)}
+    yield {"final": True, "data": _parse_json(text), "timing": timing}
 
 
 async def _echo_stream(sage, oracle, sentinel, compass):
@@ -237,10 +259,15 @@ Write the intelligence brief now."""
             max_tokens=400,
         )
 
-    response = await asyncio.to_thread(_call)
-    text = response.choices[0].message.content
+    try:
+        response = await asyncio.to_thread(_call)
+        text = response.choices[0].message.content or ""
+        timing = _extract_timing(response)
+    except Exception as e:
+        yield "Intelligence brief unavailable — the synthesis step could not complete."
+        yield {"final": True, "timing": {}, "error": str(e)}
+        return
 
     for i in range(0, len(text), 3):
         yield text[i:i + 3]
-
-    yield {"final": True, "timing": _extract_timing(response)}
+    yield {"final": True, "timing": timing}

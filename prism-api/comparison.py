@@ -12,10 +12,13 @@ import google.generativeai as genai
 genai.configure(api_key=os.environ.get("GOOGLE_API_KEY", ""))
 
 
-async def run_gemini_baseline(image_b64: str) -> int:
+async def run_gemini_baseline(image_b64: str):
     """
     Runs the same Sage extraction prompt on Gemini 2.5 Flash.
-    Returns elapsed milliseconds.
+
+    Returns elapsed milliseconds on success, or None if the call failed — so the
+    UI can show "baseline unavailable" rather than reporting a near-zero error
+    time that would dishonestly make the GPU look faster than Cerebras.
     """
     from prompts import SAGE_SYSTEM_PROMPT
 
@@ -32,5 +35,6 @@ async def run_gemini_baseline(image_b64: str) -> int:
         )
     except Exception as e:
         print(f"Gemini baseline failed: {e}")
+        return None
 
     return int((time.time() - start) * 1000)

@@ -4,33 +4,37 @@ import { useEffect, useRef, useState } from "react";
 interface Props {
   cerebrasMs: number;
   geminiMs: number | null;
+  geminiFailed?: boolean;
   cerebrasDone: boolean;
 }
 
-export default function SpeedPanel({ cerebrasMs, geminiMs, cerebrasDone }: Props) {
+export default function SpeedPanel({ cerebrasMs, geminiMs, geminiFailed = false, cerebrasDone }: Props) {
   const [geminiLive, setGeminiLive] = useState(cerebrasMs);
   const geminiRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Calibrate to Cerebras start time on mount so both timers run in lockstep
+  // Calibrate to Cerebras start time on mount so the baseline timer measures
+  // genuine wall-clock elapsed since the run started (both fired together).
   const [startedAt] = useState(() => Date.now() - cerebrasMs);
 
-  // Start Gemini timer immediately when the panel mounts (same start as Cerebras)
+  const settled = geminiMs !== null || geminiFailed;
+
+  // Tick the baseline timer (real elapsed) until its true result arrives.
   useEffect(() => {
-    if (geminiMs !== null) return; // already have a real value
+    if (settled) return; // already have a real value or it failed
     geminiRef.current = setInterval(() => {
       setGeminiLive(Date.now() - startedAt);
     }, 100);
     return () => {
       if (geminiRef.current) clearInterval(geminiRef.current);
     };
-  }, [geminiMs, startedAt]); // only on mount or when geminiMs changes
+  }, [settled, startedAt]);
 
-  // Stop the interval the moment Gemini's real time arrives
+  // Stop the interval the moment the baseline settles
   useEffect(() => {
-    if (geminiMs !== null && geminiRef.current) {
+    if (settled && geminiRef.current) {
       clearInterval(geminiRef.current);
       geminiRef.current = null;
     }
-  }, [geminiMs]);
+  }, [settled]);
 
   const cerebrasS = (cerebrasMs / 1000).toFixed(1);
   const geminiS = ((geminiMs ?? geminiLive) / 1000).toFixed(1);
