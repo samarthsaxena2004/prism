@@ -13,7 +13,10 @@ We use Railway for the backend because it natively supports Python and automatic
 2. Go to [Railway.app](https://railway.app/) and log in with GitHub.
 3. Click **New Project** → **Deploy from GitHub repo**.
 4. Select your `samarthsaxena2004/prism` repository.
-5. Railway will automatically detect the backend because of the `Procfile`.
+5. **CRITICAL STEP**: Because this is a monorepo, Railway won't know which folder to build. 
+   - Once the service is created, click on it, go to the **Settings** tab.
+   - Scroll down to **Root Directory** and set it to `/prism-api`.
+   - (Railway will now automatically detect the `Procfile` and `Aptfile` inside that folder and rebuild).
 6. Once the project is created, click on the deployed service, go to the **Variables** tab, and add your API keys:
    - `CEREBRAS_API_KEY` = `your_cerebras_key`
    - `OPENROUTER_API_KEY` = `your_openrouter_key`
