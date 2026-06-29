@@ -99,6 +99,21 @@ function AgentRow({ agent }: { agent: Agent }) {
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {agent.detail}
         </p>
+        {agent.status === 'completed' && (agent.tps != null || agent.ttftMs != null) && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] tabular-nums text-muted-foreground/80">
+            {agent.ttftMs != null && (
+              <span>
+                TTFT <span style={{ color: agent.accent }}>{agent.ttftMs}ms</span>
+              </span>
+            )}
+            {agent.tps != null && (
+              <span>
+                <span style={{ color: agent.accent }}>{agent.tps.toLocaleString()}</span> tok/s
+              </span>
+            )}
+            <span className="text-muted-foreground/50">measured · Cerebras</span>
+          </div>
+        )}
       </div>
     </div>
   )

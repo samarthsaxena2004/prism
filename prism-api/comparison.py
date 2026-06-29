@@ -9,7 +9,8 @@ import os
 
 import google.generativeai as genai
 
-genai.configure(api_key=os.environ.get("GOOGLE_API_KEY", ""))
+_GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+genai.configure(api_key=_GOOGLE_API_KEY)
 
 
 async def run_gemini_baseline(image_b64: str):
@@ -24,6 +25,10 @@ async def run_gemini_baseline(image_b64: str):
     """
     from prompts import SAGE_SYSTEM_PROMPT
 
+    if not _GOOGLE_API_KEY:
+        print("[gemini-baseline] SKIPPED — GOOGLE_API_KEY is not set; baseline will show 'unavailable'.")
+        return None
+
     start = time.time()
     try:
         model = genai.GenerativeModel("gemini-2.5-flash")
@@ -36,7 +41,9 @@ async def run_gemini_baseline(image_b64: str):
             lambda: model.generate_content([SAGE_SYSTEM_PROMPT, image_part])
         )
     except Exception as e:
-        print(f"Gemini baseline failed: {e}")
+        # Loud + typed so it's obvious in the server log whether/why Gemini failed.
+        print(f"[gemini-baseline] FAILED after {int((time.time() - start) * 1000)}ms: "
+              f"{type(e).__name__}: {e}")
         return None
 
     elapsed_ms = int((time.time() - start) * 1000)
@@ -50,4 +57,5 @@ async def run_gemini_baseline(image_b64: str):
     except Exception:
         pass
 
+    print(f"[gemini-baseline] OK in {elapsed_ms}ms ({tps if tps is not None else '?'} tok/s measured)")
     return {"ms": elapsed_ms, "tps": tps}

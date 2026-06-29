@@ -11,6 +11,10 @@ export type Agent = {
   accent: string
   /** Agents sharing a group id are executing concurrently. */
   group?: string
+  /** Measured time-to-first-token in ms (from Cerebras time_info). */
+  ttftMs?: number
+  /** Measured throughput in tokens/sec (from Cerebras time_info). */
+  tps?: number
 }
 
 export const pipeline: Agent[] = [

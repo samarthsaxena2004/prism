@@ -48,6 +48,10 @@ export function ChatInterface() {
   // when the SSE stream closes — i.e. after the GPU baseline too) does not
   // overwrite the frozen Cerebras time with the longer total stream duration.
   const cerebrasDoneRef = useRef(false)
+  // Tracks whether the GPU baseline has reported a result (success or failure).
+  // Guarantees the baseline timer always stops, even if the stream ends without
+  // a speed_data event (abort, network drop, hung call).
+  const geminiSettledRef = useRef(false)
 
   const active = messages.length > 0
 
@@ -59,6 +63,7 @@ export function ChatInterface() {
     abortRef.current?.abort()
     if (timerRef.current) clearInterval(timerRef.current)
     cerebrasDoneRef.current = false
+    geminiSettledRef.current = false
     setElapsedMs(0)
     setGeminiMs(null)
     setGeminiFailed(false)
@@ -141,6 +146,7 @@ export function ChatInterface() {
             }
             if (ev.type === 'speed_data') {
               // Real GPU baseline time + measured throughput (or failure) arrive here.
+              geminiSettledRef.current = true
               if (ev.gemini_ms) {
                 setGeminiMs(ev.gemini_ms)
                 if (typeof ev.gemini_tps === 'number') setGeminiTps(ev.gemini_tps)
@@ -152,6 +158,7 @@ export function ChatInterface() {
             if (ev.type === 'error') {
               // Stop any still-running agent so nothing spins forever, and stop
               // the baseline timer since the pipeline aborted.
+              geminiSettledRef.current = true
               setGeminiFailed(true)
               setMessages((prev) =>
                 prev.map((msg) => {
@@ -172,6 +179,8 @@ export function ChatInterface() {
               // otherwise it would balloon to include the Gemini wait.
               if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
               if (!cerebrasDoneRef.current) setElapsedMs(Date.now() - startRef.current)
+              // Stream closed — if the baseline never reported, stop its timer now.
+              if (!geminiSettledRef.current) { geminiSettledRef.current = true; setGeminiFailed(true) }
               setProcessing(false)
               setDone(true)
               if (ev.doc_id) setDocId(ev.doc_id)
@@ -240,6 +249,8 @@ export function ChatInterface() {
                     status: 'completed',
                     duration: ev.ms ? `${(ev.ms / 1000).toFixed(1)}s` : undefined,
                     detail: updatedDetail,
+                    ttftMs: typeof ev.ttft_ms === 'number' ? ev.ttft_ms : newPipeline[agentIdx].ttftMs,
+                    tps: typeof ev.tps === 'number' ? ev.tps : newPipeline[agentIdx].tps,
                   }
                 }
 
@@ -255,6 +266,8 @@ export function ChatInterface() {
       // Clean up timer if it wasn't already stopped by the 'complete' event handler.
       // Do NOT overwrite elapsedMs — it was already set to Cerebras time by 'complete'.
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+      // Final safety net: never leave the baseline timer ticking after the run ends.
+      if (!geminiSettledRef.current) { geminiSettledRef.current = true; setGeminiFailed(true) }
       setProcessing(false)
       setDone(true)
     }

@@ -31,8 +31,9 @@ from prompts import SAGE_SYSTEM_PROMPT, COMPASS_SYSTEM_PROMPT, ECHO_SYSTEM_PROMP
 client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY", ""))
 
 # Hard ceiling on how long we keep the SSE stream open waiting for the GPU
-# baseline. It exists only so a hung third-party call can't wedge the request.
-GEMINI_MAX_WAIT_S = 90
+# baseline. A real Gemini extraction finishes well within this; if it doesn't,
+# we stop waiting and report the baseline as unavailable rather than hanging.
+GEMINI_MAX_WAIT_S = 60
 
 
 async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
