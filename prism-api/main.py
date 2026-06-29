@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from pipeline import run_prism_pipeline
-from comparison import run_baseline
+from comparison import run_gpu_pipeline
 from storage import upload_image, save_document, get_records, get_record_detail
 
 app = FastAPI(title="Prism API", version="1.0.0")
@@ -30,7 +30,7 @@ app.add_middleware(
 class AnalyzeRequest(BaseModel):
     image_b64: str
     facility_name: str = "Demo Facility"
-    form_type: str = "dialysis_monitoring"
+    form_type: str = "medical-records"
 
 
 @app.get("/health")
@@ -49,12 +49,17 @@ async def upload_form(file: UploadFile = File(...)):
 @app.post("/api/analyze")
 async def analyze_document(req: AnalyzeRequest):
     """
-    Main endpoint — runs the 5-agent pipeline and streams SSE events.
-    See prism-api/CLAUDE.md for the full SSE event schema.
+    Main endpoint. Runs the SAME 5-agent workflow on two stacks in parallel —
+    Cerebras (gemma-4-31b) and a GPU-hosted model via OpenRouter — and streams
+    real, measured events from both. Every number on the speed panel is a real
+    measurement; nothing is simulated or hardcoded.
+
+    Event schema: see prism-api/CLAUDE.md. Each pipeline's events carry an
+    `engine: "cerebras" | "gpu"` tag so the frontend can route them to the
+    correct execution column.
     """
     doc_id = str(uuid.uuid4())
 
-    # Persist the document row before streaming starts
     try:
         await save_document(doc_id, req.facility_name, req.form_type)
     except Exception as e:
@@ -62,86 +67,86 @@ async def analyze_document(req: AnalyzeRequest):
 
     async def event_stream():
         start_time = time.time()
-        queue = asyncio.Queue()
-        
-        from prompts import get_prompts_for_category
-        
-        async def run_cerebras():
+        queue: asyncio.Queue = asyncio.Queue()
+
+        async def pump_cerebras():
             try:
-                async for event in run_prism_pipeline(
+                async for ev in run_prism_pipeline(
                     image_b64=req.image_b64,
                     doc_id=doc_id,
                     facility_name=req.facility_name,
                     form_type=req.form_type,
                 ):
-                    event["engine"] = "cerebras"
-                    await queue.put(event)
+                    ev["engine"] = "cerebras"
+                    await queue.put(ev)
             except Exception as e:
-                await queue.put({'type': 'error', 'content': str(e), 'engine': 'cerebras'})
-            await queue.put({"type": "cerebras_done"})
-            
-        async def run_gpu():
+                print(f"[cerebras-pipeline] crashed: {type(e).__name__}: {e}")
+                await queue.put({"type": "error", "content": str(e), "engine": "cerebras"})
+            await queue.put({"type": "_cerebras_finished"})
+
+        async def pump_gpu():
             try:
-                prompts = get_prompts_for_category(req.form_type)
-                for agent in ["sage", "oracle", "sentinel", "compass", "echo"]:
-                    await queue.put({"agent": agent, "type": "status", "content": prompts["STATUS"][agent], "engine": "gpu"})
-                
-                await asyncio.sleep(1.0)
-                # Simulate extremely slow GPU token generation
-                fake_text = "Initializing standard GPU vision model...\nAnalyzing image context...\nExtracting fields..."
-                for i in range(0, len(fake_text), 2):
-                    await queue.put({"agent": "sage", "type": "streaming", "content": fake_text[i:i+2], "engine": "gpu"})
-                    await asyncio.sleep(0.4) # Stays stuck on Sage
-            except asyncio.CancelledError:
-                pass
+                async for ev in run_gpu_pipeline(req.image_b64, req.form_type):
+                    if ev.get("type") == "gpu_pipeline_done":
+                        # Translate to the frontend's existing speed_data shape.
+                        model_short = (ev.get("model") or "gpu").split("/")[-1].split(":")[0].upper()
+                        await queue.put({
+                            "type": "speed_data", "agent": "system",
+                            "gemini_ms": ev.get("total_ms"),
+                            "gemini_tps": ev.get("tps"),
+                            "baseline_name": f"5 AGENTS — {model_short} (GPU)",
+                        })
+                    elif ev.get("type") == "gpu_unavailable":
+                        await queue.put({
+                            "type": "speed_data", "agent": "system",
+                            "gemini_ms": None, "gemini_tps": None,
+                            "baseline_name": "GPU baseline — unavailable",
+                            "reason": ev.get("reason"),
+                        })
+                    else:
+                        ev["engine"] = "gpu"
+                        await queue.put(ev)
+            except Exception as e:
+                print(f"[gpu-pipeline] crashed: {type(e).__name__}: {e}")
+                await queue.put({
+                    "type": "speed_data", "agent": "system",
+                    "gemini_ms": None, "gemini_tps": None,
+                    "baseline_name": "GPU baseline — unavailable",
+                })
+            await queue.put({"type": "_gpu_finished"})
 
-        c_task = asyncio.create_task(run_cerebras())
-        g_task = asyncio.create_task(run_gpu())
-        gemini_task = asyncio.create_task(run_baseline(req.image_b64))
+        c_task = asyncio.create_task(pump_cerebras())
+        g_task = asyncio.create_task(pump_gpu())
 
-        while True:
-            event = await queue.get()
-            if event.get("type") == "cerebras_done":
-                break
-            yield f"data: {json.dumps(event)}\n\n"
-            await asyncio.sleep(0)
-            
-        g_task.cancel()
-        
-        # Pipeline complete — send complete event (Cerebras side done).
-        total_ms = int((time.time() - start_time) * 1000)
-        yield f"data: {json.dumps({'type': 'pipeline_done', 'total_ms': total_ms, 'doc_id': doc_id})}\n\n"
-
-        # ── Wait for real Gemini time (up to 120 s) ──────────────────────────
         try:
-            result = await asyncio.wait_for(gemini_task, timeout=120.0)
-            if result is None:
-                raise Exception("Baseline returned None")
-            gemini_ms = result["ms"]
-            gemini_tps = result["tps"]
-            baseline_name = result["name"]
-        except (asyncio.TimeoutError, Exception):
-            # Fallback to simulated slow GPU metrics for a flawless demo
-            gemini_ms = 28500  # 28.5 seconds
-            gemini_tps = 18
-            baseline_name = "1 AGENT — NEMOTRON OMNI (GPU)"
+            finished = 0
+            while finished < 2:
+                ev = await queue.get()
+                t = ev.get("type")
+                if t in ("_cerebras_finished", "_gpu_finished"):
+                    finished += 1
+                    continue
+                yield f"data: {json.dumps(ev)}\n\n"
+                await asyncio.sleep(0)
 
-        yield f"data: {json.dumps({'type': 'speed_data', 'gemini_ms': gemini_ms, 'gemini_tps': gemini_tps, 'baseline_name': baseline_name, 'agent': 'system'})}\n\n"
-        yield f"data: {json.dumps({'type': 'complete', 'total_ms': total_ms, 'doc_id': doc_id})}\n\n"
+            total_ms = int((time.time() - start_time) * 1000)
+            yield f"data: {json.dumps({'type': 'complete', 'total_ms': total_ms, 'doc_id': doc_id})}\n\n"
+        except asyncio.CancelledError:
+            # Client disconnected — kill both pipelines so we don't waste API calls.
+            for t in (c_task, g_task):
+                if not t.done():
+                    t.cancel()
+            raise
 
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
 @app.get("/api/records")
 async def list_records(limit: int = 20, offset: int = 0):
-    """Browse paginated digitized records."""
     try:
         return await get_records(limit=limit, offset=offset)
     except Exception as e:
@@ -150,7 +155,6 @@ async def list_records(limit: int = 20, offset: int = 0):
 
 @app.get("/api/records/{record_id}")
 async def get_record(record_id: str):
-    """Fetch a single record with all agent outputs."""
     try:
         return await get_record_detail(record_id)
     except Exception as e:
