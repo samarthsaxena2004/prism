@@ -60,7 +60,7 @@ def _count_fields(obj) -> tuple[int, int]:
 
 def _pick_record(compass, sage) -> dict:
     """Prefer Compass's clean record; fall back to Sage's raw extraction."""
-    if isinstance(compass, dict) and ("sessions" in compass or "patient" in compass):
+    if isinstance(compass, dict) and ("sessions" in compass or "entity" in compass):
         return compass
     if isinstance(sage, dict):
         return sage
@@ -89,7 +89,7 @@ def _build_review_queue(oracle, sentinel) -> list[dict]:
         queue.append({
             "source": "Oracle",
             "severity": sev,
-            "label": str(fl.get("field") or "Clinical value"),
+            "label": str(fl.get("field") or "Domain value"),
             "detail": str(fl.get("concern") or fl.get("value") or "").strip(),
             "session": fl.get("session"),
         })

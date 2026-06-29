@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
-import { type ChatMessage, type Agent, INITIAL_DIALYSIS_PIPELINE, INITIAL_RESEARCH_PIPELINE } from '@/lib/agents'
+import { type ChatMessage, type Agent, INITIAL_ENTERPRISE_PIPELINE } from '@/lib/agents'
 import { ChatHeader } from './chat-header'
 import { UserMessage } from './user-message'
 import { AiMessage } from './ai-message'
@@ -107,9 +107,7 @@ export function ChatInterface() {
     timerRef.current = setInterval(() => setElapsedMs(Date.now() - startRef.current), 100)
 
     const assistantId = crypto.randomUUID()
-    const pipelineBase = selectedCategory === 'dialysis_monitoring' 
-      ? INITIAL_DIALYSIS_PIPELINE 
-      : INITIAL_RESEARCH_PIPELINE
+    const pipelineBase = INITIAL_ENTERPRISE_PIPELINE
       
     // Create deep copies to ensure clean state
     const startingPipeline = JSON.parse(JSON.stringify(pipelineBase))

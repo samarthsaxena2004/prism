@@ -30,7 +30,7 @@ app.add_middleware(
 class AnalyzeRequest(BaseModel):
     image_b64: str
     facility_name: str = "Demo Facility"
-    form_type: str = "medical-records"
+    form_type: str = "enterprise-form"
     note: str | None = None
 
 
@@ -108,24 +108,14 @@ async def analyze_document(req: AnalyzeRequest):
 
         async def pump_cerebras():
             try:
-                if req.form_type == "dialysis_monitoring":
-                    from pipeline import run_prism_pipeline
-                    pipeline_coroutine = run_prism_pipeline(
-                        image_b64=req.image_b64,
-                        doc_id=doc_id,
-                        facility_name=req.facility_name,
-                        form_type=req.form_type,
-                        note=req.note
-                    )
-                else:
-                    from research_pipeline import run_research_pipeline
-                    pipeline_coroutine = run_research_pipeline(
-                        image_b64=req.image_b64,
-                        doc_id=doc_id,
-                        facility_name=req.facility_name,
-                        form_type=req.form_type,
-                        note=req.note
-                    )
+                from research_pipeline import run_research_pipeline
+                pipeline_coroutine = run_research_pipeline(
+                    image_b64=req.image_b64,
+                    doc_id=doc_id,
+                    facility_name=req.facility_name,
+                    form_type=req.form_type,
+                    note=req.note
+                )
                 
                 async for ev in pipeline_coroutine:
                     ev["engine"] = "cerebras"
@@ -141,8 +131,7 @@ async def analyze_document(req: AnalyzeRequest):
                     if ev.get("type") == "gpu_pipeline_done":
                         # Translate to the frontend's existing speed_data shape.
                         model_short = (ev.get("model") or "gpu").split("/")[-1].split(":")[0].upper()
-                        # Dynamic agent count text depending on pipeline
-                        agents_text = "5 AGENTS" if req.form_type == "dialysis_monitoring" else "4 AGENTS"
+                        agents_text = "4 AGENTS"
                         await queue.put({
                             "type": "speed_data", "agent": "system",
                             "gemini_ms": ev.get("total_ms"),

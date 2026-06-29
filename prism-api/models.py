@@ -5,7 +5,7 @@ from typing import Optional
 class AnalyzeRequest(BaseModel):
     image_b64: str
     facility_name: str = "Demo Facility"
-    form_type: str = "dialysis_monitoring"
+    form_type: str = "enterprise-form"
 
 
 class AgentOutput(BaseModel):
@@ -16,10 +16,10 @@ class AgentOutput(BaseModel):
 
 class RecordSummary(BaseModel):
     id: str
-    patient_name: Optional[str]
-    patient_id: Optional[str]
-    consultant: Optional[str]
-    session_count: int
+    entity_name: Optional[str]
+    entity_id: Optional[str]
+    owner: Optional[str]
+    record_count: int
     critical_flags: int
     warning_flags: int
     overall_status: str

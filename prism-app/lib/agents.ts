@@ -17,52 +17,7 @@ export type Agent = {
   tps?: number
 }
 
-export const INITIAL_DIALYSIS_PIPELINE: Agent[] = [
-  {
-    id: 'sage',
-    name: 'Sage',
-    role: 'Vision Extraction',
-    status: 'pending',
-    detail: 'Initializing vision models...',
-    accent: 'hsl(88, 44%, 59%)',
-  },
-  {
-    id: 'oracle',
-    name: 'Oracle',
-    role: 'Domain Validation',
-    status: 'pending',
-    detail: 'Awaiting extracted data...',
-    accent: '#cc785c',
-    group: 'parallel',
-  },
-  {
-    id: 'sentinel',
-    name: 'Sentinel',
-    role: 'Anomaly Detection',
-    status: 'pending',
-    detail: 'Awaiting extracted data...',
-    accent: 'hsl(36, 60%, 60%)',
-    group: 'parallel',
-  },
-  {
-    id: 'compass',
-    name: 'Compass',
-    role: 'Data Structuring',
-    status: 'pending',
-    detail: 'Awaiting validated records',
-    accent: 'hsl(278, 32%, 68%)',
-  },
-  {
-    id: 'echo',
-    name: 'Echo',
-    role: 'Intelligence Brief',
-    status: 'pending',
-    detail: 'Awaiting structured dataset',
-    accent: 'hsl(12, 40%, 66%)',
-  },
-]
-
-export const INITIAL_RESEARCH_PIPELINE: Agent[] = [
+export const INITIAL_ENTERPRISE_PIPELINE: Agent[] = [
   {
     id: 'sage',
     name: 'Scout',

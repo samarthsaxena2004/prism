@@ -68,15 +68,15 @@ async def save_record(doc_id: str, sage, oracle, sentinel, compass, echo: str):
     """Save the complete structured record after all agents finish."""
     def _insert():
         try:
-            patient = compass.get("patient", {}) if compass else {}
+            entity = compass.get("entity", {}) if compass else {}
             summary = compass.get("summary", {}) if compass else {}
 
             _get_client().table("records").insert({
                 "document_id": doc_id,
-                "patient_name": patient.get("name", "Unknown"),
-                "patient_id": patient.get("id"),
-                "consultant": patient.get("consultant"),
-                "session_count": summary.get("total_sessions", 0),
+                "entity_name": entity.get("name", "Unknown"),
+                "entity_id": entity.get("id"),
+                "owner": entity.get("owner"),
+                "record_count": summary.get("total_records", 0),
                 "critical_flags": summary.get("critical", 0),
                 "warning_flags": summary.get("needs_attention", 0),
                 "structured_data": compass,
@@ -96,7 +96,7 @@ async def get_records(limit: int = 20, offset: int = 0):
     """Fetch paginated records for the records browser."""
     def _fetch():
         result = _get_client().table("records").select(
-            "id, patient_name, patient_id, consultant, session_count, "
+            "id, entity_name, entity_id, owner, record_count, "
             "critical_flags, warning_flags, overall_status, created_at"
         ).order("created_at", desc=True).limit(limit).offset(offset).execute()
         return result.data
