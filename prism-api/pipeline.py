@@ -28,10 +28,6 @@ client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY", ""))
 
 async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
     """Yields SSE event dicts for the full 5-agent pipeline."""
-    from comparison import run_gemini_baseline
-
-    # Fire Gemini baseline in the background immediately
-    gemini_task = asyncio.create_task(run_gemini_baseline(image_b64))
 
     # ── SAGE ──────────────────────────────────────────────────────────
     yield {"agent": "sage", "type": "status", "content": "Reading form structure and extracting all visible fields..."}
@@ -47,7 +43,20 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
             yield {"agent": "sage", "type": "streaming", "content": event}
     sage_ms = int((time.time() - sage_start) * 1000)
 
-    yield {"agent": "sage", "type": "done", "content": "", "ms": sage_ms, **sage_timing}
+    # Build a brief summary for the frontend to show in the agent detail line
+    sage_summary = ""
+    if isinstance(sage_result, dict):
+        sessions = sage_result.get("sessions") or []
+        patient = sage_result.get("header") or sage_result.get("patient") or {}
+        n = len(sessions) if isinstance(sessions, list) else 0
+        name = patient.get("patient_name") or patient.get("name") or ""
+        if n and name:
+            sage_summary = f"{n} sessions extracted · {name}"
+        elif n:
+            sage_summary = f"{n} sessions extracted"
+        else:
+            sage_summary = "Fields extracted"
+    yield {"agent": "sage", "type": "done", "content": sage_summary, "ms": sage_ms, **sage_timing}
     if sage_timing:
         yield {"type": "timing", "agent": "sage", **sage_timing}
 
@@ -128,14 +137,6 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
         compass=compass_result,
         echo=echo_content,
     )
-
-    gemini_ms = None
-    try:
-        gemini_ms = await asyncio.wait_for(gemini_task, timeout=2.0)
-    except asyncio.TimeoutError:
-        pass
-
-    yield {"type": "speed_data", "gemini_ms": gemini_ms, "agent": "system"}
 
 
 # ── Streaming helpers ────────────────────────────────────────────────
