@@ -55,7 +55,7 @@ export function Footer() {
           <div className="flex items-center gap-6">
             {[
               { label: "Status", href: "https://status.samarthsaxena.dev/" },
-              { label: "GitHub", href: "http://github.com/samarthsaxena2004/prisma" },
+              { label: "GitHub", href: "http://github.com/samarthsaxena2004/prism" },
             ].map((link, i) => (
               <motion.a
                 key={link.label}

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react"
 import { motion, useInView } from "framer-motion"
-import Image from "next/image"
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -46,32 +45,6 @@ function ScrambleText({ text, className }: { text: string; className?: string })
 /* ── blinking cursor ── */
 function BlinkDot() {
   return <span className="inline-block h-2 w-2 bg-[#ea580c] animate-blink" />
-}
-
-/* ── live uptime counter ── */
-function UptimeCounter() {
-  const [seconds, setSeconds] = useState(0)
-
-  useEffect(() => {
-    const base = 31536000 + Math.floor(Math.random() * 1000000)
-    setSeconds(base)
-    const interval = setInterval(() => setSeconds((s) => s + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const format = (n: number) => {
-    const d = Math.floor(n / 86400)
-    const h = Math.floor((n % 86400) / 3600)
-    const m = Math.floor((n % 3600) / 60)
-    const s = n % 60
-    return `${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`
-  }
-
-  return (
-    <span className="font-mono text-[#ea580c]" style={{ fontVariantNumeric: "tabular-nums" }}>
-      {format(seconds)}
-    </span>
-  )
 }
 
 /* ── stat block ── */
@@ -124,41 +97,39 @@ export function AboutSection() {
 
       {/* Two-column layout */}
       <div className="flex flex-col lg:flex-row gap-0 border-2 border-foreground">
-        {/* Left: Image */}
+        {/* Left: Live pipeline terminal */}
         <motion.div
           initial={{ opacity: 0, x: -30, filter: "blur(6px)" }}
           whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.7, ease }}
-          className="relative w-full lg:w-1/2 min-h-[300px] lg:min-h-[500px] border-b-2 lg:border-b-0 lg:border-r-2 border-foreground overflow-hidden bg-foreground"
+          className="relative w-full lg:w-1/2 min-h-[300px] lg:min-h-[500px] border-b-2 lg:border-b-0 lg:border-r-2 border-foreground overflow-hidden bg-foreground flex flex-col"
         >
-          {/* Image label overlay */}
-          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 bg-foreground/80 backdrop-blur-sm">
-            <span className="text-[10px] tracking-[0.2em] uppercase text-background/60 font-mono">
-              RENDER: isometric_infrastructure.obj
+          {/* Terminal header */}
+          <div className="flex items-center justify-between px-4 py-2 bg-foreground/90 border-b border-background/10 flex-shrink-0">
+            <span className="text-[10px] tracking-[0.2em] uppercase text-background/50 font-mono">
+              prism_pipeline.log
             </span>
-            <span className="text-[10px] tracking-[0.2em] uppercase text-[#ea580c] font-mono">
-              LIVE
-            </span>
+            <BlinkDot />
           </div>
-
-          <Image
-            src="/images/about-isometric.jpg"
-            alt="Isometric view of AI infrastructure with server racks and data pipelines"
-            fill
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            priority
-          />
-
-          {/* Bottom image coordinates */}
-          <div className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 bg-foreground/80 backdrop-blur-sm">
-            <span className="text-[10px] tracking-[0.2em] uppercase text-background/40 font-mono">
-              {"CAM: -45deg / ISO"}
-            </span>
-            <span className="text-[10px] tracking-[0.2em] uppercase text-background/40 font-mono">
-              {"RES: 2048x2048"}
-            </span>
+          {/* Terminal body */}
+          <div className="flex-1 px-5 py-5 font-mono text-[11px] leading-6 overflow-hidden space-y-1">
+            <p className="text-background/40">$ prism --analyze dialysis_form.jpg --agents 5</p>
+            <p className="text-[#a6c97a]">✓ SAGE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [2.1s] Extracted 8 sessions · 47 fields</p>
+            <p className="text-background/25">  ↳ patient: &quot;Demo Patient&quot; · sessions: 941–948</p>
+            <div className="flex gap-6">
+              <p className="text-[#e8a882]">✓ ORACLE&nbsp;&nbsp;&nbsp;[1.8s] 1 critical, 2 warnings</p>
+            </div>
+            <p className="text-background/25">  ↳ session 942: BP 190/110 → CRITICAL</p>
+            <p className="text-[#e6b66e]">✓ SENTINEL&nbsp;[1.9s] 2 anomalies · Quality: 81/100</p>
+            <p className="text-background/25">  ↳ session 945: post_weight missing</p>
+            <p className="text-[#c9a6d4]">✓ COMPASS&nbsp;&nbsp;[2.4s] Structured record generated</p>
+            <p className="text-[#d9a998]">✓ ECHO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.2s] Intelligence brief ready</p>
+            <div className="mt-4 pt-3 border-t border-background/10">
+              <p className="text-background/40">Cerebras (Gemma 4 31B)&nbsp;&nbsp;9.4s&nbsp;&nbsp;<span className="text-[#a6c97a]">✓ DONE</span></p>
+              <p className="text-background/40">Standard GPU (1 agent)&nbsp;&nbsp;&nbsp;47s&nbsp;&nbsp;&nbsp;<span className="text-background/30">▌ still running</span></p>
+            </div>
+            <p className="mt-2 text-[#ea580c]">→ Record saved · Supabase · 2 flags for review</p>
           </div>
         </motion.div>
 
@@ -190,9 +161,9 @@ export function AboutSection() {
                 transition={{ duration: 0.5, delay: 0.2, ease }}
                 className="text-2xl lg:text-3xl font-mono font-bold tracking-tight uppercase text-balance"
               >
-                Speed is a Feature,
+                Defense in Depth,
                 <br />
-                <span className="text-[#ea580c]">Not a Metric.</span>
+                <span className="text-[#ea580c]">Not Just Speed.</span>
               </motion.h2>
 
               <motion.div
@@ -203,7 +174,7 @@ export function AboutSection() {
                 className="flex flex-col gap-4"
               >
                 <p className="text-xs lg:text-sm font-mono text-muted-foreground leading-relaxed">
-                  At standard GPU speeds, complex multi-agent pipelines are overnight batch jobs. Powered by Cerebras, Prism runs five sequential and parallel agents in real-time.
+                  Oracle validates BP and weight against clinical reference ranges. Sentinel independently checks for mathematical inconsistencies and data quality errors. Two orthogonal agents catch what one misses — and at Cerebras speeds, the entire pipeline runs in 12 seconds, fast enough for point-of-care use during shift handoff.
                 </p>
               </motion.div>
 
