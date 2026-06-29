@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://via.placeholder.com/800x400?text=Prism+Hero+Image" alt="Prism Cover" />
+  <img src="./prism-app/public/cover.png" alt="Prism Cover" />
 
   <h1>PRISM</h1>
   <p>
@@ -17,14 +17,14 @@
 
 ---
 
-## 🏆 Cerebras × Google DeepMind Gemma 4 Hackathon
+## Cerebras × Google DeepMind Gemma 4 Hackathon
 
 Prism is a multi-agent AI platform built for the **Enterprise Impact**, **Multiverse Agents**, and **People's Choice** tracks of the Cerebras Hackathon.
 
 We set out to solve a massive real-world physical problem: **Medical Document Digitization in India.** 
 Currently, nursing staff at dialysis centers spend up to 20 minutes manually transcribing handwritten patient forms into digital systems. With 800,000 Chronic Kidney Disease (CKD) patients in India undergoing millions of dialysis sessions annually, the administrative burden is staggering.
 
-**Prism** leverages the blinding speed of Cerebras and the multimodal intelligence of Gemma 4 31B to completely automate this pipeline. 
+**Prism** leverages the speed of Cerebras and the multimodal intelligence of Gemma 4 31B to completely automate this pipeline. 
 
 ### Why Cerebras? The Speed Differentiation
 At standard GPU speeds (e.g., 47+ seconds), running a 5-agent pipeline on a document is a background batch job. 
@@ -32,7 +32,7 @@ At **Cerebras speeds (12 seconds at 1,500 TPS)**, it becomes a **real-time inter
 
 ---
 
-## 🚀 The Five Agents of Prism
+## The Five Agents of Prism
 
 Prism uses a highly orchestrated pipeline of 5 specialized agents. Each agent relies on the output of the previous ones, making it a true **Multiverse Agent** swarm.
 
@@ -40,43 +40,43 @@ Prism uses a highly orchestrated pipeline of 5 specialized agents. Each agent re
   <img src="https://via.placeholder.com/800x300?text=Agent+Pipeline+Diagram" alt="Prism Agent Pipeline" />
 </div>
 
-1. **👁️ SAGE (Vision Extractor)**
+1. **SAGE (Vision Extractor)**
    - **Role**: Reads the raw base64 image of the handwritten form.
    - **Model**: Gemma 4 31B Vision.
-   - **Output**: Unstructured but incredibly accurate text extraction of clinical fields.
+   - **Output**: Unstructured but highly accurate text extraction of clinical fields.
    
-2. **🩺 ORACLE (Clinical Validator)**
+2. **ORACLE (Clinical Validator)**
    - **Role**: Analyzes the extracted data for medical coherence.
    - **Model**: Gemma 4 31B Text.
    - *Runs in parallel with Sentinel.*
 
-3. **⚠️ SENTINEL (Anomaly Detector)**
+3. **SENTINEL (Anomaly Detector)**
    - **Role**: Scans for out-of-bounds metrics (e.g., critical blood pressure drops during dialysis).
    - **Model**: Gemma 4 31B Text.
    - *Runs in parallel with Oracle.*
 
-4. **🏗️ COMPASS (Data Structurer)**
+4. **COMPASS (Data Structurer)**
    - **Role**: Takes the output of Sage, Oracle, and Sentinel and conforms it into strict, database-ready JSON.
    - **Model**: Gemma 4 31B Text.
 
-5. **🎙️ ECHO (Intelligence Brief)**
+5. **ECHO (Intelligence Brief)**
    - **Role**: Synthesizes the entire pipeline into a 120-word human-readable clinical brief for the attending physician.
    - **Model**: Gemma 4 31B Text.
 
 ---
 
-## 📸 See It In Action (Screenshots)
+## See It In Action
 
-*Hackathon Judges: Watch our [60-Second Demo Video](#) to see the live dual-timer comparing Cerebras against a GPU baseline!*
+*Hackathon Judges: Watch our [60-Second Demo Video](#) to see the live dual-timer comparing Cerebras against a GPU baseline.*
 
 | The Upload | The Live Pipeline | The Final Record |
 | :---: | :---: | :---: |
-| <img src="https://via.placeholder.com/300x200?text=Upload+Screen" alt="Upload" /> | <img src="https://via.placeholder.com/300x200?text=Live+SSE+Streaming" alt="Streaming" /> | <img src="https://via.placeholder.com/300x200?text=Structured+JSON" alt="Result" /> |
-| Drag & Drop the handwritten form | Watch 5 agents collaborate in real-time via SSE | Clean JSON ready for HIS/Supabase |
+| <img src="./prism-app/public/demo1.png" alt="Upload" /> | <img src="./prism-app/public/demo2.png" alt="Streaming" /> | <img src="./prism-app/public/demo3.png" alt="Result" /> |
+| Drag and drop the handwritten form | Watch 5 agents collaborate in real-time via SSE | Clean JSON ready for HIS/Supabase |
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## Tech Stack & Architecture
 
 Prism is built to be production-ready and scalable for enterprise healthcare systems.
 
@@ -100,7 +100,7 @@ graph TD
 
 ---
 
-## 💻 Running Prism Locally
+## Running Prism Locally
 
 ### Prerequisites
 - Node.js (v18+)
@@ -134,9 +134,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Visit `http://localhost:3000` and experience the speed of Cerebras yourself.
+Visit `http://localhost:3000` to run the application locally.
 
 ---
 <div align="center">
-  <p>Built with 🤍 for the Cerebras × Google DeepMind Hackathon.</p>
+  <p>Built for the Cerebras × Google DeepMind Hackathon.</p>
 </div>
