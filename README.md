@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./prism-app/public/cover.png" alt="Prism Cover" />
+  <img src="./prism-app/public/cover-v3.png" alt="Prism Cover" />
 
   <h1>PRISM</h1>
   <p>
@@ -66,16 +66,16 @@ graph TD
 *Hackathon Judges: Watch our [60-Second Demo Video](https://www.youtube.com/watch?v=LOOsFYnBOYc) to see the live dual-timer comparing Cerebras against a GPU baseline.*
 
 ### 1. The Upload
-<img src="./prism-app/public/demo1.png" alt="Upload Screen" width="100%" />
-*Select your template (Insurance, Government, Financial, Logistics, or Operations) and drag-and-drop the handwritten form to begin the process.*
+<img src="./prism-app/public/demo1-v3.png" alt="Upload Screen" width="100%" />
+<p><em>Select your template (Insurance, Government, Financial, Logistics, or Operations) and drag-and-drop the handwritten form to begin the process.</em></p>
 
 ### 2. The Live Pipeline
-<img src="./prism-app/public/demo2.png" alt="Live SSE Streaming" width="100%" />
-*Watch the 5 agents collaborate in real-time. Execution is streamed directly to the UI via Server-Sent Events.*
+<img src="./prism-app/public/demo2-v3.png" alt="Live SSE Streaming" width="100%" />
+<p><em>Watch the 5 agents collaborate in real-time. Execution is streamed directly to the UI via Server-Sent Events.</em></p>
 
 ### 3. The Final Record
-<img src="./prism-app/public/demo3.png" alt="Structured Result" width="100%" />
-*The messy handwriting is converted into clean, validated JSON and actionable insights, ready for enterprise database ingestion.*
+<img src="./prism-app/public/demo3-v3.png" alt="Structured Result" width="100%" />
+<p><em>The messy handwriting is converted into clean, validated JSON and actionable insights, ready for enterprise database ingestion.</em></p>
 
 ---
 
