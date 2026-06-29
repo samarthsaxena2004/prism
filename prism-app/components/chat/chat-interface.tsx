@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Sparkles } from 'lucide-react'
 import { type ChatMessage, type Agent, INITIAL_DIALYSIS_PIPELINE, INITIAL_RESEARCH_PIPELINE } from '@/lib/agents'
 import { ChatHeader } from './chat-header'
 import { UserMessage } from './user-message'
@@ -12,6 +13,9 @@ import SpeedPanel from '../SpeedPanel'
 import StructuredTable from '../StructuredTable'
 import InsightPanel from '../InsightPanel'
 import { type Insights } from '@/lib/export'
+import { ArtifactSidebar } from './artifact-sidebar'
+
+import { ReportCard } from './report-card'
 
 const spring = { type: 'spring' as const, stiffness: 300, damping: 30 }
 
@@ -42,6 +46,7 @@ export function ChatInterface() {
 
   const [compassContent, setCompassContent] = useState('')
   const [echoContent, setEchoContent] = useState('')
+  const [activeReport, setActiveReport] = useState<'cerebras' | 'gpu' | null>(null)
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startRef = useRef(0)
@@ -79,6 +84,8 @@ export function ChatInterface() {
     setInsights(null)
     setCompassContent('')
     setEchoContent('')
+    setEchoContent('')
+    setActiveReport('cerebras')
   }, [])
 
   // Cleanup on unmount
@@ -98,22 +105,25 @@ export function ChatInterface() {
     setProcessing(true)
     startRef.current = Date.now()
     timerRef.current = setInterval(() => setElapsedMs(Date.now() - startRef.current), 100)
-    abortRef.current = new AbortController()
 
-    const now = Date.now()
-    const assistantId = `a-${now}`
-    const initialPipeline = selectedCategory === 'dialysis_monitoring' ? INITIAL_DIALYSIS_PIPELINE : INITIAL_RESEARCH_PIPELINE;
-    
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${now}`, role: 'user', content: value, images },
+    const assistantId = crypto.randomUUID()
+    const pipelineBase = selectedCategory === 'dialysis_monitoring' 
+      ? INITIAL_DIALYSIS_PIPELINE 
+      : INITIAL_RESEARCH_PIPELINE
+      
+    // Create deep copies to ensure clean state
+    const startingPipeline = JSON.parse(JSON.stringify(pipelineBase))
+    const startingGpuPipeline = JSON.parse(JSON.stringify(pipelineBase))
+
+    setMessages([
+      { id: crypto.randomUUID(), role: 'user', content: value, images },
       { 
         id: assistantId, 
         role: 'assistant', 
-        status: 'Processing documents...', 
-        pipeline: JSON.parse(JSON.stringify(initialPipeline)), 
-        content: '',
-        gpuPipeline: JSON.parse(JSON.stringify(initialPipeline)),
+        content: '', 
+        status: 'Starting analysis...',
+        pipeline: startingPipeline,
+        gpuPipeline: startingGpuPipeline,
         gpuContent: ''
       },
     ])
@@ -122,31 +132,34 @@ export function ChatInterface() {
     const imageB64 = images[0] || "" // Send full data URL to preserve MIME type
 
     try {
+      abortRef.current = new AbortController()
       const res = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           image_b64: imageB64 || "", 
           facility_name: "Demo Facility",
-          form_type: selectedCategory 
+          form_type: selectedCategory,
+          note: value
         }),
         signal: abortRef.current.signal,
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
-      const reader = res.body!.getReader()
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No body')
       const decoder = new TextDecoder()
-      let buf = ''
+      let buffer = ''
 
       while (true) {
-        const { done: d, value } = await reader.read()
-        if (d) break
-        buf += decoder.decode(value, { stream: true })
-        const lines = buf.split('\n')
-        buf = lines.pop() ?? ''
+        const { done: readerDone, value: chunk } = await reader.read()
+        if (readerDone) break
+        buffer += decoder.decode(chunk, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
 
         for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          try {
+          if (line.startsWith('data: ')) {
             const ev = JSON.parse(line.slice(6))
 
             // Top-level state changes that must happen outside setMessages
@@ -195,6 +208,24 @@ export function ChatInterface() {
               )
               continue
             }
+            if (ev.type === 'gatekeeper_reject') {
+              if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+              geminiSettledRef.current = true
+              setGeminiFailed(true)
+              setProcessing(false)
+              setMessages((prev) =>
+                prev.map((msg) => {
+                  if (msg.id !== assistantId || msg.role !== 'assistant') return msg
+                  const np = msg.pipeline.map((a) =>
+                    a.status === 'running'
+                      ? { ...a, status: 'completed' as const, detail: 'Validation failed' }
+                      : a,
+                  )
+                  return { ...msg, pipeline: np, status: `❌ REJECTED: ${ev.content}`, content: `**Validation Failed:**\n\n${ev.content}` }
+                }),
+              )
+              continue
+            }
             if (ev.type === 'complete') {
               // SSE stream closed (after the GPU baseline). Finalize — but do NOT
               // overwrite the Cerebras time already frozen by 'pipeline_done',
@@ -209,12 +240,22 @@ export function ChatInterface() {
               continue
             }
 
+            // Handle side-effects (like streaming into external states) outside setMessages
+            const isGpu = ev.engine === 'gpu'
+            if (ev.type === 'streaming') {
+              if (ev.agent === 'echo' || ev.agent === 'publisher') {
+                if (!isGpu) setEchoContent(c => c + ev.content)
+              }
+              if (ev.agent === 'compass' && !isGpu) {
+                setCompassContent(c => c + ev.content)
+              }
+            }
+
             // All other events update the message pipeline state
             setMessages((prev) => {
               return prev.map(msg => {
                 if (msg.id !== assistantId || msg.role !== 'assistant') return msg
 
-                const isGpu = ev.engine === 'gpu'
                 const targetPipelineKey = isGpu ? 'gpuPipeline' : 'pipeline'
                 const targetContentKey = isGpu ? 'gpuContent' : 'content'
                 
@@ -231,10 +272,6 @@ export function ChatInterface() {
                 } else if (ev.type === 'streaming' && agentIdx >= 0) {
                   if (ev.agent === 'echo' || ev.agent === 'publisher') {
                     newContent += ev.content
-                    if (!isGpu) setEchoContent(c => c + ev.content)
-                  }
-                  if (ev.agent === 'compass' && !isGpu) {
-                    setCompassContent(c => c + ev.content)
                   }
                 } else if (ev.type === 'done' && agentIdx >= 0) {
                   // Parse real agent output to update detail line with actual findings
@@ -248,19 +285,23 @@ export function ChatInterface() {
                         const vs = parsed.validation_summary
                         const total = (vs.critical ?? 0) + (vs.warnings ?? 0)
                         updatedDetail = total === 0
-                          ? `${vs.sessions_checked ?? '?'} sessions · All values within range`
-                          : `${vs.critical ?? 0} critical, ${vs.warnings ?? 0} warnings, ${vs.notes ?? 0} notes`
+                          ? 'Validation passed'
+                          : `${total} issues found`
+                      } else {
+                        updatedDetail = 'Validation complete'
                       }
-                    } catch { updatedDetail = 'Clinical validation complete' }
+                    } catch { updatedDetail = 'Validation complete' }
                   } else if (ev.agent === 'sentinel' && ev.content) {
                     try {
                       const s = ev.content.indexOf('{')
                       const e = ev.content.lastIndexOf('}') + 1
                       const parsed = s >= 0 ? JSON.parse(ev.content.slice(s, e > 0 ? e : undefined)) : null
-                      if (parsed?.anomaly_count !== undefined) {
-                        updatedDetail = parsed.anomaly_count === 0
-                          ? `No anomalies detected · Quality: ${parsed.data_quality_score ?? '?'}/100`
-                          : `${parsed.anomaly_count} anomalies · Quality score: ${parsed.data_quality_score ?? '?'}/100`
+                      if (parsed?.anomalies) {
+                        updatedDetail = parsed.anomalies.length > 0
+                          ? `${parsed.anomalies.length} anomalies detected`
+                          : 'No anomalies'
+                      } else {
+                        updatedDetail = 'Anomaly detection complete'
                       }
                     } catch { updatedDetail = 'Anomaly detection complete' }
                   } else if (ev.agent === 'sage') {
@@ -284,7 +325,7 @@ export function ChatInterface() {
                 return { ...msg, [targetPipelineKey]: newPipeline, status: newStatusMsg, [targetContentKey]: newContent }
               })
             })
-          } catch { /* skip */ }
+          }
         }
       }
     } catch (err: unknown) {
@@ -301,12 +342,13 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-transparent">
-      <ChatHeader />
+    <div className="relative flex h-dvh flex-row overflow-hidden bg-transparent w-full">
+      <div className="relative flex-1 flex flex-col min-w-0">
+        <ChatHeader />
 
-      {active ? (
-        <main className="scrollbar-thin flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 pb-32">
+        {active ? (
+          <main className="scrollbar-thin flex-1 overflow-y-auto relative">
+            <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 pb-32">
             <AnimatePresence initial={false}>
               {messages.map((message) => (
                 <motion.div
@@ -324,9 +366,9 @@ export function ChatInterface() {
                     <AiMessage
                       status={message.status}
                       content={message.content}
-                      pipeline={message.pipeline}
-                      gpuPipeline={message.gpuPipeline}
-                      gpuContent={message.gpuContent}
+                      pipeline={message.pipeline || []}
+                      gpuPipeline={(message as any).gpuPipeline}
+                      gpuContent={(message as any).gpuContent}
                     />
                   )}
                 </motion.div>
@@ -388,6 +430,23 @@ export function ChatInterface() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            <AnimatePresence>
+              {(cerebrasDone || done) && echoContent && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="mt-8"
+                >
+                  <ReportCard 
+                    onViewCerebras={() => setActiveReport('cerebras')}
+                    onViewGpu={() => setActiveReport('gpu')}
+                    activeReport={activeReport}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
             
             <div ref={endRef} />
           </div>
@@ -403,7 +462,7 @@ export function ChatInterface() {
               className="w-full text-center"
             >
               <span className="inline-block text-[10px] tracking-[0.2em] uppercase font-mono text-muted-foreground border border-foreground px-3 py-2">
-                Enterprise Intelligence
+                Gemma 4 31B × Cerebras Inference
               </span>
               <h1 className="mt-8 font-pixel text-4xl sm:text-5xl lg:text-6xl tracking-tight text-foreground select-none uppercase">
                 Think clearly, decide faster
@@ -439,13 +498,20 @@ export function ChatInterface() {
         >
           <div className="mx-auto w-full max-w-3xl px-4 pb-5 pointer-events-auto drop-shadow-2xl">
             <ChatInput onSend={handleSend} docked processing={processing} />
-            <p className="mt-2.5 text-center text-[11px] text-muted-foreground/70">
-              Prism orchestrates a 5-agent pipeline. Outputs require clinician
-              review before use.
+            <p className="mt-2.5 text-center text-[11px] text-muted-foreground/70 truncate">
+              Consumer AI Swarm • Cerebras Hackathon • Verify outputs before use
             </p>
           </div>
         </motion.div>
       ) : null}
+      </div>
+
+      <ArtifactSidebar 
+        content={activeReport === 'cerebras' ? echoContent : (messages[messages.length - 1]?.gpuContent || '')} 
+        title={activeReport === 'cerebras' ? 'Interactive Report' : 'Raw GPU Output'}
+        isGpu={activeReport === 'gpu'}
+        onClose={() => setActiveReport(null)} 
+      />
     </div>
   )
 }

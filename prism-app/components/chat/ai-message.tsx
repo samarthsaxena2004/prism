@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { ChevronDown, Loader2, Sparkles, Check } from 'lucide-react'
+import { ChevronDown, Loader2, Sparkles, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Agent } from '@/lib/agents'
 import { ExecutionPanel } from './execution-panel'
@@ -42,41 +42,56 @@ export function AiMessage({ status, content, pipeline, gpuPipeline, gpuContent }
       </div>
 
       <div className="min-w-0 flex-1">
-        {/* State 1: collapsed status line (interactive) */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          className={cn(
-            'group flex w-full items-center gap-2.5 rounded-lg border-2 border-transparent px-2 py-1.5 text-left transition-colors',
-            'hover:border-foreground/50 hover:bg-secondary/60',
-          )}
-        >
-          {running ? (
-            <Loader2
-              className="size-4 shrink-0 animate-spin text-[var(--processing)]"
-              aria-hidden="true"
-            />
-          ) : (
-            <span
-              className="animate-breathe size-2 shrink-0 rounded-full bg-[var(--success)]"
-              aria-hidden="true"
-            />
-          )}
-          <span className="flex-1 truncate text-xs font-mono uppercase font-bold text-foreground/90">
-            {status}
-          </span>
-          <span className="hidden font-mono text-[10px] tracking-widest uppercase text-muted-foreground sm:inline">
-            {expanded ? 'Hide' : 'Details'}
-          </span>
-          <ChevronDown
+        {status.includes('REJECTED') ? (
+          <div className="w-full rounded-xl border border-red-500/20 bg-red-500/5 p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-500">
+                <X className="size-4" />
+              </div>
+              <h3 className="text-sm font-semibold tracking-wide text-red-500 uppercase">
+                Template Mismatch
+              </h3>
+            </div>
+            <div className="mt-3 text-sm text-foreground/80 font-medium">
+              {content?.replace('**Validation Failed:**\n\n', '')}
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
             className={cn(
-              'size-4 shrink-0 text-muted-foreground transition-transform duration-300',
-              expanded && 'rotate-180',
+              'group flex w-full items-center gap-2.5 rounded-lg border-2 border-transparent px-2 py-1.5 text-left transition-colors',
+              'hover:border-foreground/50 hover:bg-secondary/60',
             )}
-            aria-hidden="true"
-          />
-        </button>
+          >
+            {running ? (
+              <Loader2
+                className="size-4 shrink-0 animate-spin text-[var(--processing)]"
+                aria-hidden="true"
+              />
+            ) : (
+              <span
+                className="animate-breathe size-2 shrink-0 rounded-full bg-[var(--success)]"
+                aria-hidden="true"
+              />
+            )}
+            <span className="flex-1 truncate text-xs font-mono uppercase font-bold text-foreground/90">
+              {status}
+            </span>
+            <span className="hidden font-mono text-[10px] tracking-widest uppercase text-muted-foreground sm:inline">
+              {expanded ? 'Hide' : 'Details'}
+            </span>
+            <ChevronDown
+              className={cn(
+                'size-4 shrink-0 text-muted-foreground transition-transform duration-300',
+                expanded && 'rotate-180',
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        )}
 
         {/* State 2: expanded execution panel */}
         <AnimatePresence initial={false}>
@@ -113,31 +128,11 @@ export function AiMessage({ status, content, pipeline, gpuPipeline, gpuContent }
                   </button>
                 </div>
               </div>
-              <ExecutionPanel pipeline={activePipeline} />
+              <ExecutionPanel pipeline={activePipeline} engine={engine} />
             </motion.div>
           ) : null}
         </AnimatePresence>
 
-        {activeContent ? (
-          <div className="mt-4 px-2">
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl shadow-lg overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between px-4 py-2 bg-secondary/30 border-b border-border/50">
-                <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <Sparkles className="size-3 text-[var(--processing)]" /> Interactive Report
-                </span>
-                <button 
-                  onClick={() => alert("Report saved to your Supabase workspace!")}
-                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-background rounded text-[10px] uppercase font-mono tracking-wider text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <Check className="size-3" /> Save
-                </button>
-              </div>
-              <div className="p-5 prose prose-invert prose-sm max-w-none prose-headings:text-[var(--processing)] prose-headings:tracking-wider prose-h3:text-[11px] prose-h3:uppercase prose-a:text-blue-400">
-                <ReactMarkdown>{activeContent}</ReactMarkdown>
-              </div>
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   )

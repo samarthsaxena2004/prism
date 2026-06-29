@@ -117,7 +117,7 @@ function DynamicDetail({ agent }: { agent: Agent }) {
   )
 }
 
-function AgentRow({ agent }: { agent: Agent }) {
+function AgentRow({ agent, engine }: { agent: Agent, engine: 'cerebras' | 'gpu' }) {
   const isRunning = agent.status === 'running'
   return (
     <div
@@ -176,7 +176,7 @@ function AgentRow({ agent }: { agent: Agent }) {
                 <span style={{ color: agent.accent }}>{agent.tps.toLocaleString()}</span> tok/s
               </span>
             )}
-            <span className="text-muted-foreground/50">measured · Cerebras</span>
+            <span className="text-muted-foreground/50">measured · {engine === 'gpu' ? 'GPU' : 'Cerebras'}</span>
           </div>
         )}
       </div>
@@ -184,7 +184,7 @@ function AgentRow({ agent }: { agent: Agent }) {
   )
 }
 
-export function ExecutionPanel({ pipeline }: { pipeline: Agent[] }) {
+export function ExecutionPanel({ pipeline, engine }: { pipeline: Agent[], engine: 'cerebras' | 'gpu' }) {
   // Build render groups so parallel agents can be visually bracketed together.
   const rendered: React.ReactNode[] = []
   let i = 0
@@ -210,13 +210,13 @@ export function ExecutionPanel({ pipeline }: { pipeline: Agent[] }) {
           </div>
           <div className="space-y-1">
             {groupAgents.map((a) => (
-              <AgentRow key={a.id} agent={a} />
+              <AgentRow key={a.id} agent={a} engine={engine} />
             ))}
           </div>
         </div>,
       )
     } else {
-      rendered.push(<AgentRow key={agent.id} agent={agent} />)
+      rendered.push(<AgentRow key={agent.id} agent={agent} engine={engine} />)
       i++
     }
   }

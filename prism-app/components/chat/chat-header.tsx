@@ -11,22 +11,17 @@ export function ChatHeader() {
       <header className="sticky top-0 z-10 border-b-2 border-foreground bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <Cpu
-              className="size-4"
-              strokeWidth={1.5}
-              aria-hidden="true"
-            />
-            <span className="text-xs font-mono tracking-[0.15em] uppercase font-bold text-foreground">
-              SYS.INT
+            <span className="text-lg font-pixel uppercase tracking-tight text-foreground">
+              Consumer AI
             </span>
           </div>
-          <div className="flex items-center gap-2 border-2 border-foreground bg-card px-3 py-1">
+          <div className="flex items-center gap-2 border-2 border-foreground bg-card px-3 py-1 rounded-full">
             <Activity
               className="size-3 text-[var(--success)]"
               aria-hidden="true"
             />
             <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground">
-              5 agents online
+              5-Agent Pipeline Active
             </span>
           </div>
         </div>
@@ -38,13 +33,8 @@ export function ChatHeader() {
     <header className="sticky top-0 z-10 border-b-2 border-foreground bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <Cpu
-            className="size-4"
-            strokeWidth={1.5}
-            aria-hidden="true"
-          />
-          <span className="text-xs font-mono tracking-[0.15em] uppercase font-bold text-foreground">
-            SYS.INT
+          <span className="text-lg font-pixel uppercase tracking-tight text-foreground">
+            Consumer AI
           </span>
         </div>
 
@@ -60,13 +50,13 @@ export function ChatHeader() {
               <Sun className="size-4" aria-hidden="true" />
             )}
           </button>
-          <div className="flex items-center gap-2 border-2 border-foreground bg-card px-3 py-1">
+          <div className="flex items-center gap-2 border-2 border-foreground bg-card px-3 py-1 rounded-full">
             <Activity
               className="size-3 text-[var(--success)]"
               aria-hidden="true"
             />
             <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground">
-              5 agents online
+              5-Agent Pipeline Active
             </span>
           </div>
         </div>

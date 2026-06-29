@@ -3,6 +3,7 @@
 import {
   useRef,
   useState,
+  useCallback,
   type ChangeEvent,
   type DragEvent,
   type FormEvent,
@@ -11,6 +12,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUp, ImagePlus, Paperclip, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ImageModal } from '@/components/image-modal'
 
 type Attachment = { id: string; url: string; name: string }
 
@@ -28,15 +30,16 @@ export function ChatInput({
   const [value, setValue] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  function autoGrow() {
+  const autoGrow = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`
-  }
+  }, [])
 
   async function addFiles(files: FileList | null) {
     if (!files) return
@@ -153,7 +156,7 @@ export function ChatInput({
                 : 'border-foreground/40 hover:border-[var(--processing)]/50 hover:bg-secondary/60',
             )}
           >
-            <span className="flex size-9 items-center justify-center rounded-none bg-secondary border border-foreground text-foreground transition-colors group-hover:text-foreground">
+            <span className="flex size-9 items-center justify-center rounded-full bg-secondary border border-foreground text-foreground transition-colors group-hover:text-foreground">
               <ImagePlus className="size-4" aria-hidden="true" />
             </span>
             <span className="text-xs font-mono uppercase tracking-widest text-foreground/90">
@@ -195,9 +198,15 @@ export function ChatInput({
                     />
                     <button
                       type="button"
+                      onClick={() => setEnlargedImage(a.url)}
+                      aria-label={`View ${a.name}`}
+                      className="absolute inset-0 size-full z-0 cursor-pointer"
+                    />
+                    <button
+                      type="button"
                       onClick={() => removeAttachment(a.id)}
                       aria-label={`Remove ${a.name}`}
-                      className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-md bg-background/90 text-foreground opacity-0 shadow-sm backdrop-blur transition-opacity group-hover:opacity-100"
+                      className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-md bg-background/90 text-foreground opacity-0 shadow-sm backdrop-blur transition-opacity group-hover:opacity-100 z-10"
                     >
                       <X className="size-3" aria-hidden="true" />
                     </button>
@@ -257,6 +266,7 @@ export function ChatInput({
         </div>
       </form>
       </div>
+      <ImageModal src={enlargedImage} onClose={() => setEnlargedImage(null)} />
     </div>
   )
 }

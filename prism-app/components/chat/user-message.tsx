@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { ImageModal } from '@/components/image-modal'
+
 export function UserMessage({
   content,
   images,
@@ -5,6 +8,8 @@ export function UserMessage({
   content: string
   images?: string[]
 }) {
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
+
   return (
     <div className="flex w-full flex-col items-end gap-2">
       {images && images.length > 0 ? (
@@ -12,7 +17,8 @@ export function UserMessage({
           {images.map((src, i) => (
             <div
               key={`${src}-${i}`}
-              className="size-20 overflow-hidden border-2 rounded-xl border-foreground bg-background"
+              className="size-20 overflow-hidden border-2 rounded-xl border-foreground bg-background cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setEnlargedImage(src)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -30,6 +36,7 @@ export function UserMessage({
           {content}
         </p>
       </div>
+      <ImageModal src={enlargedImage} onClose={() => setEnlargedImage(null)} />
     </div>
   )
 }
