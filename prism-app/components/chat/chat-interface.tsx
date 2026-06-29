@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { type ChatMessage, type Agent } from '@/lib/agents'
+import { type ChatMessage, type Agent, INITIAL_DIALYSIS_PIPELINE, INITIAL_RESEARCH_PIPELINE } from '@/lib/agents'
 import { ChatHeader } from './chat-header'
 import { UserMessage } from './user-message'
 import { AiMessage } from './ai-message'
@@ -103,16 +103,18 @@ export function ChatInterface() {
     const now = Date.now()
     const assistantId = `a-${now}`
     
+    const initialPipeline = formType === 'dialysis_monitoring' ? INITIAL_DIALYSIS_PIPELINE : INITIAL_RESEARCH_PIPELINE;
+    
     setMessages((prev) => [
       ...prev,
       { id: `u-${now}`, role: 'user', content: value, images },
       { 
         id: assistantId, 
         role: 'assistant', 
-        status: 'Validating documents...', 
-        pipeline: JSON.parse(JSON.stringify(INITIAL_PIPELINE)), 
+        status: 'Processing documents...', 
+        pipeline: JSON.parse(JSON.stringify(initialPipeline)), 
         content: '',
-        gpuPipeline: JSON.parse(JSON.stringify(INITIAL_PIPELINE)),
+        gpuPipeline: JSON.parse(JSON.stringify(initialPipeline)),
         gpuContent: ''
       },
     ])

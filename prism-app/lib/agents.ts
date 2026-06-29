@@ -17,22 +17,21 @@ export type Agent = {
   tps?: number
 }
 
-export const pipeline: Agent[] = [
+export const INITIAL_DIALYSIS_PIPELINE: Agent[] = [
   {
     id: 'sage',
     name: 'Sage',
     role: 'Vision Extraction',
-    status: 'completed',
-    duration: '2.1s',
-    detail: 'Parsed 4 documents · 38 fields extracted',
+    status: 'pending',
+    detail: 'Initializing vision models...',
     accent: 'hsl(88, 44%, 59%)',
   },
   {
     id: 'oracle',
     name: 'Oracle',
     role: 'Domain Validation',
-    status: 'running',
-    detail: 'Cross-referencing ICD-10 + lab ranges',
+    status: 'pending',
+    detail: 'Awaiting extracted data...',
     accent: '#cc785c',
     group: 'parallel',
   },
@@ -40,8 +39,8 @@ export const pipeline: Agent[] = [
     id: 'sentinel',
     name: 'Sentinel',
     role: 'Anomaly Detection',
-    status: 'running',
-    detail: 'Scanning for outliers across 12 vitals',
+    status: 'pending',
+    detail: 'Awaiting extracted data...',
     accent: 'hsl(36, 60%, 60%)',
     group: 'parallel',
   },
@@ -61,6 +60,43 @@ export const pipeline: Agent[] = [
     detail: 'Awaiting structured dataset',
     accent: 'hsl(12, 40%, 66%)',
   },
+]
+
+export const INITIAL_RESEARCH_PIPELINE: Agent[] = [
+  {
+    id: 'sage',
+    name: 'Scout',
+    role: 'Vision Extraction',
+    status: 'pending',
+    detail: 'Initializing vision models...',
+    accent: 'hsl(88, 44%, 59%)',
+  },
+  {
+    id: 'researcher',
+    name: 'Researcher',
+    role: 'Deep Web Search',
+    status: 'pending',
+    detail: 'Awaiting search entities...',
+    accent: '#cc785c',
+    group: 'parallel',
+  },
+  {
+    id: 'navigator',
+    name: 'Navigator',
+    role: 'API Orchestrator',
+    status: 'pending',
+    detail: 'Awaiting API parameters...',
+    accent: 'hsl(36, 60%, 60%)',
+    group: 'parallel',
+  },
+  {
+    id: 'publisher',
+    name: 'Publisher',
+    role: 'Artifact Generation',
+    status: 'pending',
+    detail: 'Awaiting context...',
+    accent: 'hsl(278, 32%, 68%)',
+  }
 ]
 
 export type ChatMessage =

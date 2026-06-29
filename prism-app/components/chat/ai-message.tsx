@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
 import { ChevronDown, Loader2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Agent } from '@/lib/agents'
@@ -118,39 +119,23 @@ export function AiMessage({ status, content, pipeline, gpuPipeline, gpuContent }
         </AnimatePresence>
 
         {activeContent ? (
-          <div className="mt-3 px-2 text-sm font-mono">
-            {activeContent.split('\n').map((line, i) => {
-              if (line.startsWith('## ')) {
-                return (
-                  <h3 key={i} className="text-[var(--processing)] font-bold text-[11px] tracking-widest mt-4 mb-1 uppercase">
-                    {line.replace('## ', '')}
-                  </h3>
-                )
-              }
-              if (line.startsWith('* ') || line.startsWith('- ')) {
-                return (
-                  <div key={i} className="flex gap-2 text-foreground/80 mt-1 pl-1">
-                    <span className="text-[var(--chart-4)] select-none">›</span>
-                    <span>{line.substring(2)}</span>
-                  </div>
-                )
-              }
-              if (line.trim() === '') {
-                return <div key={i} className="h-2" />
-              }
-              
-              const parts = line.split(/(\*\*.*?\*\*)/g)
-              return (
-                <p key={i} className="text-foreground/85 leading-relaxed mt-1">
-                  {parts.map((part, j) => {
-                    if (part.startsWith('**') && part.endsWith('**')) {
-                      return <strong key={j} className="text-foreground font-semibold">{part.slice(2, -2)}</strong>
-                    }
-                    return <span key={j}>{part}</span>
-                  })}
-                </p>
-              )
-            })}
+          <div className="mt-4 px-2">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl shadow-lg overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-4 py-2 bg-secondary/30 border-b border-border/50">
+                <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <Sparkles className="size-3 text-[var(--processing)]" /> Interactive Report
+                </span>
+                <button 
+                  onClick={() => alert("Report saved to your Supabase workspace!")}
+                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-background rounded text-[10px] uppercase font-mono tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Check className="size-3" /> Save
+                </button>
+              </div>
+              <div className="p-5 prose prose-invert prose-sm max-w-none prose-headings:text-[var(--processing)] prose-headings:tracking-wider prose-h3:text-[11px] prose-h3:uppercase prose-a:text-blue-400">
+                <ReactMarkdown>{activeContent}</ReactMarkdown>
+              </div>
+            </div>
           </div>
         ) : null}
       </div>

@@ -40,8 +40,21 @@ async def health():
 
 @app.post("/api/upload")
 async def upload_form(file: UploadFile = File(...)):
-    """Accept a form image, return base64 for the analyze endpoint."""
+    """Accept a form image or PDF, return base64 for the analyze endpoint."""
     content = await file.read()
+    
+    if file.filename.lower().endswith(".pdf") or file.content_type == "application/pdf":
+        try:
+            import fitz
+            doc = fitz.open(stream=content, filetype="pdf")
+            if len(doc) > 0:
+                page = doc[0]
+                pix = page.get_pixmap(dpi=150)
+                content = pix.tobytes("jpeg")
+            doc.close()
+        except Exception as e:
+            print(f"Warning: Failed to parse PDF with PyMuPDF: {e}")
+
     b64 = base64.b64encode(content).decode()
     return {"image_b64": b64, "filename": file.filename, "size": len(content)}
 
@@ -68,12 +81,24 @@ async def analyze_document(req: AnalyzeRequest):
         
         async def run_cerebras():
             try:
-                async for event in run_prism_pipeline(
-                    image_b64=req.image_b64,
-                    doc_id=doc_id,
-                    facility_name=req.facility_name,
-                    form_type=req.form_type,
-                ):
+                if req.form_type == "dialysis_monitoring":
+                    from pipeline import run_prism_pipeline
+                    pipeline_coroutine = run_prism_pipeline(
+                        image_b64=req.image_b64,
+                        doc_id=doc_id,
+                        facility_name=req.facility_name,
+                        form_type=req.form_type,
+                    )
+                else:
+                    from research_pipeline import run_research_pipeline
+                    pipeline_coroutine = run_research_pipeline(
+                        image_b64=req.image_b64,
+                        doc_id=doc_id,
+                        facility_name=req.facility_name,
+                        form_type=req.form_type,
+                    )
+                    
+                async for event in pipeline_coroutine:
                     event["engine"] = "cerebras"
                     await queue.put(event)
             except Exception as e:
@@ -83,8 +108,15 @@ async def analyze_document(req: AnalyzeRequest):
         async def run_gpu():
             try:
                 prompts = get_prompts_for_category(req.form_type)
-                for agent in ["sage", "oracle", "sentinel", "compass", "echo"]:
-                    await queue.put({"agent": agent, "type": "status", "content": prompts["STATUS"][agent], "engine": "gpu"})
+                if req.form_type == "dialysis_monitoring":
+                    agents = ["sage", "oracle", "sentinel", "compass", "echo"]
+                else:
+                    agents = ["sage", "researcher", "navigator", "publisher"]
+                    
+                for agent in agents:
+                    # Use prompt statuses if available, else generic
+                    status_msg = prompts.get("STATUS", {}).get(agent, f"Initializing {agent} agent...")
+                    await queue.put({"agent": agent, "type": "status", "content": status_msg, "engine": "gpu"})
                 
                 await asyncio.sleep(1.0)
                 # Simulate extremely slow GPU token generation
