@@ -29,10 +29,11 @@ def _probe_text() -> bool:
     import google.generativeai as genai
 
     genai.configure(api_key=os.environ.get("GOOGLE_API_KEY", ""))
+    model_name = os.environ.get("GEMINI_BASELINE_MODEL", "gemini-2.5-flash")
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel(model_name)
         resp = model.generate_content("Reply with exactly: OK")
-        print(f"Step 1 — text probe: ✅ Gemini replied: {(resp.text or '').strip()!r}")
+        print(f"Step 1 — text probe ({model_name}): ✅ Gemini replied: {(resp.text or '').strip()!r}")
         return True
     except Exception as e:
         print(f"Step 1 — text probe: ❌ {type(e).__name__}: {e}")

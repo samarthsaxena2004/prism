@@ -12,6 +12,11 @@ import google.generativeai as genai
 _GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 genai.configure(api_key=_GOOGLE_API_KEY)
 
+# The baseline model is configurable so you can dodge the very low free-tier
+# daily cap on gemini-2.5-flash (20 req/day). Either enable billing and keep
+# this default, or set GEMINI_BASELINE_MODEL to a higher-quota flash model.
+BASELINE_MODEL = os.environ.get("GEMINI_BASELINE_MODEL", "gemini-2.5-flash")
+
 
 async def run_gemini_baseline(image_b64: str):
     """
@@ -31,7 +36,7 @@ async def run_gemini_baseline(image_b64: str):
 
     start = time.time()
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel(BASELINE_MODEL)
         image_bytes = base64.b64decode(image_b64)
         image_part = {"mime_type": "image/jpeg", "data": image_bytes}
 
@@ -57,5 +62,6 @@ async def run_gemini_baseline(image_b64: str):
     except Exception:
         pass
 
-    print(f"[gemini-baseline] OK in {elapsed_ms}ms ({tps if tps is not None else '?'} tok/s measured)")
+    print(f"[gemini-baseline] OK ({BASELINE_MODEL}) in {elapsed_ms}ms "
+          f"({tps if tps is not None else '?'} tok/s measured)")
     return {"ms": elapsed_ms, "tps": tps}
