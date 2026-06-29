@@ -114,3 +114,34 @@ async def get_record_detail(record_id: str):
         return {"record": record.data, "agents": agents.data}
 
     return await asyncio.to_thread(_fetch)
+
+
+async def get_documents(limit: int = 50, offset: int = 0):
+    """Fetch paginated documents (workflows), both processing and done."""
+    def _fetch():
+        result = _get_client().table("documents").select(
+            "id, facility_name, form_type, status, created_at"
+        ).order("created_at", desc=True).limit(limit).offset(offset).execute()
+        return result.data
+
+    return await asyncio.to_thread(_fetch)
+
+
+async def get_document_detail(doc_id: str):
+    """Fetch complete document details with all agent outputs."""
+    def _fetch():
+        doc = _get_client().table("documents").select("*").eq("id", doc_id).single().execute()
+        agents = _get_client().table("agent_outputs").select("*").eq("document_id", doc_id).execute()
+        
+        # Also try to fetch the finalized record if it exists
+        record_data = None
+        if doc.data.get("status") == "done":
+            try:
+                record = _get_client().table("records").select("*").eq("document_id", doc_id).single().execute()
+                record_data = record.data
+            except Exception:
+                pass
+                
+        return {"document": doc.data, "agents": agents.data, "record": record_data}
+
+    return await asyncio.to_thread(_fetch)
