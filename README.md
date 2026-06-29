@@ -69,10 +69,17 @@ Prism uses a highly orchestrated pipeline of 5 specialized agents. Each agent re
 
 *Hackathon Judges: Watch our [60-Second Demo Video](#) to see the live dual-timer comparing Cerebras against a GPU baseline.*
 
-| The Upload | The Live Pipeline | The Final Record |
-| :---: | :---: | :---: |
-| <img src="./prism-app/public/demo1.png" alt="Upload" /> | <img src="./prism-app/public/demo2.png" alt="Streaming" /> | <img src="./prism-app/public/demo3.png" alt="Result" /> |
-| Drag and drop the handwritten form | Watch 5 agents collaborate in real-time via SSE | Clean JSON ready for HIS/Supabase |
+### 1. The Upload
+<img src="./prism-app/public/demo1.png" alt="Upload Screen" width="100%" />
+*Drag and drop the handwritten medical form to begin the process.*
+
+### 2. The Live Pipeline
+<img src="./prism-app/public/demo2.png" alt="Live SSE Streaming" width="100%" />
+*Watch the 5 agents collaborate in real-time. Execution is streamed directly to the UI via Server-Sent Events.*
+
+### 3. The Final Record
+<img src="./prism-app/public/demo3.png" alt="Structured Result" width="100%" />
+*The messy handwriting is converted into clean, validated JSON, ready for HIS/Supabase ingestion.*
 
 ---
 
