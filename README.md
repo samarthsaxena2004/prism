@@ -37,31 +37,12 @@ At **Cerebras speeds (12 seconds at 1,500 TPS)**, it becomes a **real-time inter
 
 ---
 
-## Dynamic Agent Swarms
+## Dynamic Agent Swarm
 
-Prism uses highly orchestrated pipelines of specialized agents. Each agent relies on the output of the previous ones, making it a true **Multiverse Agent** swarm that dynamically adapts to the selected template.
+Prism uses a highly orchestrated pipeline of specialized agents. Each agent relies on the output of the previous ones, making it a true **Multiverse Agent** swarm that dynamically adapts to the selected template.
 
-### Pipeline 1: The Clinical Swarm (Medical & Dialysis)
-For complex medical document digitization, Prism triggers a 5-agent pipeline:
-
-```mermaid
-graph TD
-    A[Handwritten Form] -->|Base64 Image| B(SAGE: Vision Extractor)
-    B --> C(ORACLE: Domain Validator)
-    B --> D(SENTINEL: Anomaly Detection)
-    C --> E(COMPASS: Data Structurer)
-    D --> E
-    E --> F(ECHO: Intelligence Brief)
-```
-
-1. **SAGE (Vision Extractor)**: Reads the raw base64 image of the handwritten form using Gemma 4 31B Vision.
-2. **ORACLE (Domain Validator)**: Analyzes the extracted data against medical coherence and clinical rules. *(Runs in parallel with Sentinel)*
-3. **SENTINEL (Anomaly Detector)**: Scans for out-of-bounds metrics (e.g., critical blood pressure drops). *(Runs in parallel with Oracle)*
-4. **COMPASS (Data Structurer)**: Takes the parallel outputs and conforms them into strict, database-ready JSON.
-5. **ECHO (Intelligence Brief)**: Synthesizes the pipeline into a human-readable clinical brief.
-
-### Pipeline 2: The Enterprise Swarm (Financial, Govt, Logistics)
-For broader enterprise datasets, Prism routes to a rapid 4-agent research pipeline:
+### The Enterprise Swarm (Financial, Govt, Logistics, Insurance)
+For complex enterprise datasets, Prism routes to a rapid 4-agent pipeline:
 
 ```mermaid
 graph TD
