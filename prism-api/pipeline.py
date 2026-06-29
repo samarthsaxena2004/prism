@@ -285,6 +285,9 @@ def extract_text_from_image(image_b64: str) -> str:
 
 async def _gatekeeper_check(extracted_text: str, form_type: str) -> dict:
     """Uses Cerebras to determine if the extracted text matches the form type with high confidence."""
+    if "[OCR Failed" in extracted_text or not extracted_text.strip():
+        return {"match": True, "confidence": 0}
+
     prompt = f"""You are a Gatekeeper expert. Analyze the following text extracted from a document. 
 Your job is to determine if this document is likely a '{form_type}' document.
 If you have >85% confidence that this document is completely unrelated to a {form_type}, you must reject it and suggest the correct category if possible (e.g., medical-records, financial-reports, insurance-policy, government-forms, logistics).

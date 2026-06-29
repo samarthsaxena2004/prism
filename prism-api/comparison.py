@@ -126,8 +126,12 @@ async def run_gpu_pipeline(image_b64: str, form_type: str, note: str | None = No
         extracted_text = pytesseract.image_to_string(img).strip()
     except Exception as e:
         extracted_text = f"[OCR Failed: {e}]"
-        
-    gk_prompt = f"""You are a Gatekeeper expert. Analyze the following text extracted from a document. 
+
+    if "[OCR Failed" in extracted_text or not extracted_text.strip():
+        # Bypass gatekeeper
+        pass
+    else:
+        gk_prompt = f"""You are a Gatekeeper expert. Analyze the following text extracted from a document. 
 Your job is to determine if this document is likely a '{form_type}' document.
 If you have >85% confidence that this document is completely unrelated to a {form_type}, you must reject it and suggest the correct category if possible (e.g., medical-records, financial-reports, insurance-policy, government-forms, logistics).
 Otherwise, accept it.
@@ -138,15 +142,15 @@ Output ONLY valid JSON in this format:
 EXTRACTED TEXT:
 {extracted_text[:3000]}
 """
-    try:
-        gk_text, _, _ = await _gpu_call(model, [{"role": "user", "content": gk_prompt}], max_tokens=150)
-        gk_res = _parse_json(gk_text)
-        if not gk_res.get("match", True) and gk_res.get("confidence", 0) >= 0.85:
-            suggested = gk_res.get("suggested_template", "another")
-            yield {"type": "gatekeeper_reject", "content": f"This is a {form_type} expert. Please select {suggested} expert."}
-            return
-    except Exception:
-        pass
+        try:
+            gk_text, _, _ = await _gpu_call(model, [{"role": "user", "content": gk_prompt}], max_tokens=150)
+            gk_res = _parse_json(gk_text)
+            if not gk_res.get("match", True) and gk_res.get("confidence", 0) >= 0.85:
+                suggested = gk_res.get("suggested_template", "another")
+                yield {"type": "gatekeeper_reject", "content": f"This is a {form_type} expert. Please select {suggested} expert."}
+                return
+        except Exception:
+            pass
 
     image_url = _data_url(image_b64)
     all_tps: list[int] = []
