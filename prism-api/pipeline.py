@@ -30,6 +30,24 @@ from prompts import get_prompts_for_category
 
 client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY", ""))
 
+# Add automatic fallback for Cerebras API rate limits
+_fallback_key = os.environ.get("CEREBRAS_FALLBACK_API_KEY")
+if _fallback_key:
+    _fallback_client = Cerebras(api_key=_fallback_key)
+    _original_create = client.chat.completions.create
+    
+    def _fallback_create(*args, **kwargs):
+        try:
+            return _original_create(*args, **kwargs)
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "429" in err_msg or "rate limit" in err_msg or "too many requests" in err_msg:
+                print(f"[CEREBRAS] Rate limit hit on primary key, falling back to secondary key...")
+                return _fallback_client.chat.completions.create(*args, **kwargs)
+            raise e
+            
+    client.chat.completions.create = _fallback_create
+
 # Speed comparison: the baseline is fired at pipeline start and awaited to
 # finish here. We cap the wait at 60s so if the user puts in a bad API key or
 # the backend is overloaded, we don't stall the final result forever.

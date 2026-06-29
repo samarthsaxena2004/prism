@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { ChevronDown, Loader2, Sparkles } from 'lucide-react'
+import { ChevronDown, Loader2, Sparkles, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Agent } from '@/lib/agents'
 import { ExecutionPanel } from './execution-panel'

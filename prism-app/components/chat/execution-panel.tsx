@@ -50,6 +50,73 @@ function statusLabel(agent: Agent) {
   return 'Pending'
 }
 
+const SAGE_PHRASES = ["Initializing vision models...", "Scanning document structure...", "Isolating visual entities...", "Extracting key value pairs...", "Mapping to schema..."]
+const ORACLE_PHRASES = ["Awaiting extracted data...", "Loading clinical guidelines...", "Cross-referencing ICD-10...", "Validating lab ranges...", "Checking contraindications..."]
+const SENTINEL_PHRASES = ["Awaiting extracted data...", "Establishing baseline metrics...", "Scanning for vital outliers...", "Flagging missing signatures...", "Running anomaly heuristics..."]
+const COMPASS_PHRASES = ["Awaiting validated records...", "Structuring JSON payload...", "Normalizing data types...", "Applying strict schema..."]
+const ECHO_PHRASES = ["Awaiting structured dataset...", "Synthesizing patient history...", "Drafting intelligence brief...", "Formatting final report..."]
+const RESEARCHER_PHRASES = ["Awaiting search entities...", "Querying global indexes...", "Scraping relevant forums...", "Analyzing public datasets...", "Compiling external context..."]
+const NAVIGATOR_PHRASES = ["Awaiting API parameters...", "Authenticating endpoints...", "Cross-referencing geolocation...", "Validating registry entries..."]
+const PUBLISHER_PHRASES = ["Awaiting context...", "Drafting markdown report...", "Generating interactive tables...", "Finalizing artifact..."]
+
+function getPhrases(agentId: string) {
+  switch(agentId) {
+    case 'sage': return SAGE_PHRASES;
+    case 'oracle': return ORACLE_PHRASES;
+    case 'sentinel': return SENTINEL_PHRASES;
+    case 'compass': return COMPASS_PHRASES;
+    case 'echo': return ECHO_PHRASES;
+    case 'researcher': return RESEARCHER_PHRASES;
+    case 'navigator': return NAVIGATOR_PHRASES;
+    case 'publisher': return PUBLISHER_PHRASES;
+    default: return ["Processing...", "Analyzing data...", "Synthesizing..."]
+  }
+}
+
+import { useState, useEffect } from 'react'
+
+function DynamicDetail({ agent }: { agent: Agent }) {
+  const [index, setIndex] = useState(0);
+  const phrases = getPhrases(agent.id);
+
+  useEffect(() => {
+    if (agent.status !== 'running') return;
+    
+    let timeoutId: NodeJS.Timeout;
+    
+    const cyclePhrase = () => {
+      // Generate a new random delay each time so it feels organic and non-rhythmic
+      // (Between 1.8 seconds and 3.5 seconds)
+      const nextDelay = 1800 + Math.random() * 1700;
+      
+      timeoutId = setTimeout(() => {
+        setIndex((i) => (i + 1) % phrases.length);
+        cyclePhrase(); // Recursively call with a new random delay
+      }, nextDelay);
+    };
+
+    cyclePhrase();
+
+    return () => clearTimeout(timeoutId);
+  }, [agent.status, phrases.length]);
+
+  if (agent.status === 'running') {
+    return (
+      <p 
+        className="mt-0.5 truncate text-xs font-medium animate-pulse" 
+        style={{ color: agent.accent, textShadow: `0 0 12px ${agent.accent}99` }}
+      >
+        {phrases[index]}
+      </p>
+    )
+  }
+  return (
+    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+      {agent.detail}
+    </p>
+  )
+}
+
 function AgentRow({ agent }: { agent: Agent }) {
   const isRunning = agent.status === 'running'
   return (
@@ -96,9 +163,7 @@ function AgentRow({ agent }: { agent: Agent }) {
             {statusLabel(agent)}
           </p>
         </div>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {agent.detail}
-        </p>
+        <DynamicDetail agent={agent} />
         {agent.status === 'completed' && (agent.tps != null || agent.ttftMs != null) && (
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] tabular-nums text-muted-foreground/80">
             {agent.ttftMs != null && (

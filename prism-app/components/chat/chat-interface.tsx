@@ -102,8 +102,7 @@ export function ChatInterface() {
 
     const now = Date.now()
     const assistantId = `a-${now}`
-    
-    const initialPipeline = formType === 'dialysis_monitoring' ? INITIAL_DIALYSIS_PIPELINE : INITIAL_RESEARCH_PIPELINE;
+    const initialPipeline = selectedCategory === 'dialysis_monitoring' ? INITIAL_DIALYSIS_PIPELINE : INITIAL_RESEARCH_PIPELINE;
     
     setMessages((prev) => [
       ...prev,
@@ -230,7 +229,7 @@ export function ChatInterface() {
                   newPipeline[agentIdx] = { ...newPipeline[agentIdx], status: 'running', detail: ev.content }
                   if (!isGpu) newStatusMsg = ev.content
                 } else if (ev.type === 'streaming' && agentIdx >= 0) {
-                  if (ev.agent === 'echo') {
+                  if (ev.agent === 'echo' || ev.agent === 'publisher') {
                     newContent += ev.content
                     if (!isGpu) setEchoContent(c => c + ev.content)
                   }
