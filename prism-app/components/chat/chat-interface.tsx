@@ -508,12 +508,12 @@ export function ChatInterface() {
       </div>
 
       <ArtifactSidebar 
-        content={activeReport === 'cerebras' ? echoContent : (messages[messages.length - 1]?.gpuContent || '')} 
+        content={activeReport === 'cerebras' ? echoContent : ((messages[messages.length - 1] as any)?.gpuContent || '')} 
         title={activeReport === 'cerebras' ? 'Interactive Report' : 'Raw GPU Output'}
         isGpu={activeReport === 'gpu'}
         onClose={() => setActiveReport(null)} 
       />
-      <TemplatesBadge />
+      {!active && <TemplatesBadge />}
     </div>
   )
 }

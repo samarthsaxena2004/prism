@@ -9,9 +9,9 @@
     Powered by <b>Cerebras</b> & <b>Gemma 4 31B</b>
   </p>
   <p>
-    <a href="/analyze">⚡ Try Prism</a> ·
-    <a href="/how-it-works">📖 How it Works</a> ·
-    <a href="/architecture">🏗️ Architecture</a> ·
+    <a href="http://prism.samarthsaxena.dev/">⚡ Try Prism</a> ·
+    <a href="https://prism.samarthsaxena.dev/how-it-works">📖 How it Works</a> ·
+    <a href="https://prism.samarthsaxena.dev/architecture">🏗️ Architecture</a> ·
     <a href="https://www.youtube.com/watch?v=LOOsFYnBOYc">🎥 View Demo</a>
   </p>
 </div>
