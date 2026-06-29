@@ -9,3 +9,4 @@ pillow==10.4.0
 pydantic==2.8.0
 python-dotenv==1.0.1
 tavily-python==0.4.0
+openai==1.50.0

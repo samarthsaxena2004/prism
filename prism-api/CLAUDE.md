@@ -10,7 +10,7 @@ prism-api/
 ├── pipeline.py      ← Orchestrates all 5 agents; yields SSE events; owns streaming helpers
 ├── prompts.py       ← All five system prompts as module-level constants (SAGE_, ORACLE_, etc.)
 ├── models.py        ← Pydantic request/response models
-├── comparison.py    ← Fires Gemini 2.5 Flash baseline in parallel; returns elapsed ms only
+├── comparison.py    ← Fires Gemma 4 GPU baseline in parallel; returns elapsed ms only
 ├── storage.py       ← All Supabase calls (upload_image, save_agent_output, save_record, get_records)
 ├── agents/
 │   ├── __init__.py
@@ -48,7 +48,7 @@ Every event from `/api/analyze` is a JSON object:
 | `type` | `status` | agent just activated, `content` = status message |
 | `type` | `streaming` | token chunk, `content` = text delta |
 | `type` | `done` | agent finished, `ms` = elapsed milliseconds |
-| `type` | `speed_data` | Gemini baseline result, `gemini_ms` = total ms |
+| `type` | `speed_data` | GPU baseline result, `baseline_ms` = total ms |
 | `type` | `complete` | full pipeline done, `doc_id` = Supabase record UUID |
 | `type` | `error` | something failed, `content` = error string |
 
@@ -79,4 +79,4 @@ To install new packages:
 - `pipeline.py` is the ONLY file that instantiates the Cerebras `client` object at module level
 - `storage.py` lazily creates the Supabase client on first use (avoids import-time env var check)
 - All five agent `.py` files in `agents/` accept `client` as their first argument — never import `client` inside an agent file directly
-- The Gemini baseline task is created at the START of the pipeline and awaited at the END (with a 2-second timeout) — this ensures it runs in true parallel with the Cerebras pipeline
+- The GPU baseline task is created at the START of the pipeline and awaited at the END (with a 60-second timeout) — this ensures it runs in true parallel with the Cerebras pipeline

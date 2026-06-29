@@ -17,7 +17,7 @@ prism-app/
 │   ├── InvestigationRoom.tsx   ← Root component wiring upload + agents + panels
 │   ├── AgentCard.tsx           ← Streaming agent card (idle/active/done states)
 │   ├── UploadZone.tsx          ← Drag-drop image upload + Analyze button
-│   ├── SpeedPanel.tsx          ← Dual timer: Cerebras vs Gemini baseline
+│   ├── SpeedPanel.tsx          ← Dual timer: Cerebras vs GPU baseline
 │   ├── StructuredTable.tsx     ← Compass JSON → session rows with status badges
 │   ├── AnomalyBadge.tsx        ← CRITICAL/WARNING/NORMAL/NOTE badges
 │   └── IntelBrief.tsx          ← Echo markdown output display
@@ -52,7 +52,7 @@ Event types the frontend handles:
 | `streaming` | append content to agent card text |
 | `done` | mark agent done, show ms + tps if present |
 | `timing` | update speed metrics for the agent's card footer |
-| `speed_data` | update Gemini baseline ms in SpeedPanel |
+| `speed_data` | update GPU baseline ms in SpeedPanel |
 | `complete` | pipeline done, set docId for StructuredTable |
 | `error` | show error state |
 

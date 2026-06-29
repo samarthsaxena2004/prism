@@ -22,7 +22,7 @@ The blueprint (`prism_execution_blueprint.md`) is the authoritative source of tr
 
 ## Tech decisions (final, do not relitigate)
 - **Model:** `gemma-4-31b` on Cerebras for all five agents
-- **Baseline:** `gemini-2.5-flash` fires simultaneously for the live speed comparison panel only
+- **Baseline:** `google/gemma-4-31b-it:free` on OpenRouter fires simultaneously for the live speed comparison panel only
 - **Streaming:** Server-Sent Events from FastAPI → Next.js (no WebSockets)
 - **DB/Storage:** Supabase (PostgreSQL + file storage)
 - **Frontend:** Next.js 15 App Router + Tailwind + shadcn/ui + Framer Motion
@@ -50,6 +50,7 @@ CEREBRAS_API_KEY
 SUPABASE_URL
 SUPABASE_ANON_KEY
 GOOGLE_API_KEY
+OPENROUTER_API_KEY (for Gemma 4 GPU baseline)
 TAVILY_API_KEY   (optional — Oracle uses web search fallback)
 ```
 Copy `prism-api/.env.example` to `prism-api/.env` and fill in keys.
