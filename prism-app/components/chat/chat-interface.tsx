@@ -120,19 +120,52 @@ export function ChatInterface() {
             const ev = JSON.parse(line.slice(6))
 
             // Top-level state changes that must happen outside setMessages
-            if (ev.type === 'complete') {
-              // Cerebras pipeline is done — stop the Cerebras timer immediately.
-              // The SSE stream stays open for up to 120 s waiting for Gemini's real time.
+            if (ev.type === 'pipeline_done') {
+              // Cerebras pipeline finished — freeze its timer at the real pipeline
+              // time and reveal results, while the GPU baseline keeps racing.
+              cerebrasDoneRef.current = true
               if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
-              setProcessing(false)
-              setDone(true)
-              setElapsedMs(Date.now() - startRef.current)
-              setDocId(ev.doc_id ?? null)
+              if (typeof ev.total_ms === 'number') setElapsedMs(ev.total_ms)
+              setCerebrasDone(true)
+              if (ev.doc_id) setDocId(ev.doc_id)
+              continue
+            }
+            if (ev.type === 'insights') {
+              setInsights(ev.data as Insights)
               continue
             }
             if (ev.type === 'speed_data') {
-              // Real Gemini time arrives here (after Gemini actually finishes)
+              // Real GPU baseline time (or failure) arrives here, after Gemini finishes.
               if (ev.gemini_ms) setGeminiMs(ev.gemini_ms)
+              else setGeminiFailed(true)
+              continue
+            }
+            if (ev.type === 'error') {
+              // Stop any still-running agent so nothing spins forever, and stop
+              // the baseline timer since the pipeline aborted.
+              setGeminiFailed(true)
+              setMessages((prev) =>
+                prev.map((msg) => {
+                  if (msg.id !== assistantId || msg.role !== 'assistant') return msg
+                  const np = msg.pipeline.map((a) =>
+                    a.status === 'running'
+                      ? { ...a, status: 'completed' as const, detail: 'Stopped' }
+                      : a,
+                  )
+                  return { ...msg, pipeline: np, status: `Pipeline error: ${ev.content ?? 'unknown error'}` }
+                }),
+              )
+              continue
+            }
+            if (ev.type === 'complete') {
+              // SSE stream closed (after the GPU baseline). Finalize — but do NOT
+              // overwrite the Cerebras time already frozen by 'pipeline_done',
+              // otherwise it would balloon to include the Gemini wait.
+              if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+              if (!cerebrasDoneRef.current) setElapsedMs(Date.now() - startRef.current)
+              setProcessing(false)
+              setDone(true)
+              if (ev.doc_id) setDocId(ev.doc_id)
               continue
             }
 
@@ -286,7 +319,7 @@ export function ChatInterface() {
             </AnimatePresence>
 
             <AnimatePresence>
-              {done && compassContent && (
+              {(cerebrasDone || done) && compassContent && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}

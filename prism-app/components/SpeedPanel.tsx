@@ -64,16 +64,20 @@ export default function SpeedPanel({ cerebrasMs, geminiMs, geminiFailed = false,
           <span className="text-[9px] text-muted-foreground/70 font-mono">~ 100 TPS</span>
         </div>
         <div className="flex items-end gap-2">
-          <span className={`font-mono text-3xl font-bold ${geminiFinished ? "text-muted-foreground" : "text-foreground"}`}>
-            {geminiS}s
+          <span className={`font-mono text-3xl font-bold ${settled ? "text-muted-foreground" : "text-foreground"}`}>
+            {geminiFailed ? "—" : `${geminiS}s`}
           </span>
-          {!geminiFinished && (
+          {!settled && (
             <span className="text-processing text-sm mb-1 animate-pulse">▌</span>
           )}
           {geminiFinished && <span className="text-muted-foreground text-sm mb-1">✓</span>}
         </div>
         <p className="text-[10px] text-muted-foreground mt-1">
-          {geminiFinished ? "1 agent, extraction only" : "1 agent, still generating..."}
+          {geminiFailed
+            ? "baseline unavailable"
+            : geminiFinished
+            ? "1 agent, extraction only"
+            : "1 agent, still generating..."}
         </p>
       </div>
     </div>
