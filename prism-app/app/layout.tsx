@@ -24,8 +24,6 @@ export const metadata: Metadata = {
   description: "Five AI agents that digitize complex handwritten documents in seconds. Powered by Gemma 4 31B on Cerebras.",
 };
 
-import { TooltipProvider } from "@/components/ui/tooltip";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,9 +38,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

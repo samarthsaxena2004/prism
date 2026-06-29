@@ -30,11 +30,22 @@ export function Navbar() {
 
           {/* Center nav links */}
           <div className="hidden md:flex items-center gap-8">
+            <Link
+              href="/how-it-works"
+              className="text-xs font-mono tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              How It Works
+            </Link>
+            <Link
+              href="/architecture"
+              className="text-xs font-mono tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              Architecture
+            </Link>
             {[
               { label: "Cerebras", href: "https://cerebras.net/" },
               { label: "Gemma 4", href: "https://ai.google.dev/gemma" },
               { label: "Hackathon", href: "https://luma.com/cerebras-piwl?tk=DIxDEq" },
-              { label: "Portfolio", href: "https://samarthsaxena.dev/" },
             ].map((link, i) => (
               <motion.a
                 key={link.label}

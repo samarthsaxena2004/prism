@@ -9,9 +9,10 @@
     Powered by <b>Cerebras</b> & <b>Gemma 4 31B</b>
   </p>
   <p>
-    <a href="#demo">View Demo</a> ·
-    <a href="#how-it-works">How it Works</a> ·
-    <a href="#architecture">Architecture</a>
+    <a href="/analyze">⚡ Try Prism</a> ·
+    <a href="/how-it-works">📖 How it Works</a> ·
+    <a href="/architecture">🏗️ Architecture</a> ·
+    <a href="https://www.youtube.com/watch?v=LOOsFYnBOYc">🎥 View Demo</a>
   </p>
 </div>
 
@@ -23,7 +24,7 @@ Prism is a multi-agent AI platform built for the **Enterprise Impact**, **Multiv
 
 We set out to solve a massive real-world physical problem: **Enterprise Document Digitization.** 
 Across industries, thousands of hours are lost daily manually transcribing handwritten forms into digital systems. Prism routes document images through a dynamic five-agent validation pipeline capable of handling multiple complex verticals, including:
-- **Medical Records** (e.g., Dialysis monitoring forms)
+- **Operations Records**
 - **Insurance Claims**
 - **Government Forms**
 - **Financial Records**
@@ -33,7 +34,7 @@ Across industries, thousands of hours are lost daily manually transcribing handw
 
 ### Why Cerebras? The Speed Differentiation
 At standard GPU speeds (e.g., 47+ seconds), running a 5-agent pipeline on a document is a background batch job. 
-At **Cerebras speeds (12 seconds at 1,500 TPS)**, it becomes a **real-time interactive UX**. Enterprise teams can take a photo of a form and instantly get structured, validated records before the client or patient even leaves the room.
+At **Cerebras speeds (12 seconds at 1,500 TPS)**, it becomes a **real-time interactive UX**. Enterprise teams can take a photo of a form and instantly get structured, validated records before the client even leaves the room.
 
 ---
 
@@ -62,11 +63,11 @@ graph TD
 
 ## See It In Action
 
-*Hackathon Judges: Watch our [60-Second Demo Video](#) to see the live dual-timer comparing Cerebras against a GPU baseline.*
+*Hackathon Judges: Watch our [60-Second Demo Video](https://www.youtube.com/watch?v=LOOsFYnBOYc) to see the live dual-timer comparing Cerebras against a GPU baseline.*
 
 ### 1. The Upload
 <img src="./prism-app/public/demo1.png" alt="Upload Screen" width="100%" />
-*Select your template (Medical, Insurance, Government, Financial, or Logistics) and drag-and-drop the handwritten form to begin the process.*
+*Select your template (Insurance, Government, Financial, Logistics, or Operations) and drag-and-drop the handwritten form to begin the process.*
 
 ### 2. The Live Pipeline
 <img src="./prism-app/public/demo2.png" alt="Live SSE Streaming" width="100%" />

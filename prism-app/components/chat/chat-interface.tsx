@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
-import { type ChatMessage, type Agent, INITIAL_ENTERPRISE_PIPELINE } from '@/lib/agents'
+import { type ChatMessage, type Agent, INITIAL_DIALYSIS_PIPELINE, INITIAL_RESEARCH_PIPELINE } from '@/lib/agents'
 import { ChatHeader } from './chat-header'
 import { UserMessage } from './user-message'
 import { AiMessage } from './ai-message'
@@ -16,6 +16,7 @@ import { type Insights } from '@/lib/export'
 import { ArtifactSidebar } from './artifact-sidebar'
 
 import { ReportCard } from './report-card'
+import { TemplatesBadge } from '../TemplatesBadge'
 
 const spring = { type: 'spring' as const, stiffness: 300, damping: 30 }
 
@@ -107,7 +108,9 @@ export function ChatInterface() {
     timerRef.current = setInterval(() => setElapsedMs(Date.now() - startRef.current), 100)
 
     const assistantId = crypto.randomUUID()
-    const pipelineBase = INITIAL_ENTERPRISE_PIPELINE
+    const pipelineBase = selectedCategory === 'dialysis_monitoring' 
+      ? INITIAL_DIALYSIS_PIPELINE 
+      : INITIAL_RESEARCH_PIPELINE
       
     // Create deep copies to ensure clean state
     const startingPipeline = JSON.parse(JSON.stringify(pipelineBase))
@@ -505,11 +508,12 @@ export function ChatInterface() {
       </div>
 
       <ArtifactSidebar 
-        content={activeReport === 'cerebras' ? echoContent : ((messages[messages.length - 1] as any)?.gpuContent || '')} 
+        content={activeReport === 'cerebras' ? echoContent : (messages[messages.length - 1]?.gpuContent || '')} 
         title={activeReport === 'cerebras' ? 'Interactive Report' : 'Raw GPU Output'}
         isGpu={activeReport === 'gpu'}
         onClose={() => setActiveReport(null)} 
       />
+      <TemplatesBadge />
     </div>
   )
 }

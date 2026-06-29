@@ -59,9 +59,9 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.45, ease }}
-          className="flex flex-col sm:flex-row items-center gap-4"
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
         >
-          <Link href="/analyze" className="group flex items-center gap-0 bg-foreground text-background text-sm font-mono tracking-wider uppercase hover:scale-103 active:scale-97 transition-transform">
+          <Link href="/analyze" className="group flex items-center gap-0 bg-foreground text-background text-sm font-mono tracking-wider uppercase hover:scale-105 active:scale-95 transition-transform shadow-md">
             <span className="flex items-center justify-center w-10 h-10 bg-[#ea580c]">
               <motion.span
                 className="inline-flex"
@@ -74,6 +74,14 @@ export function HeroSection() {
             <span className="px-5 py-2.5">
               ⚡ Try Prism
             </span>
+          </Link>
+
+          <Link href="/how-it-works" className="group flex items-center bg-muted text-foreground text-sm font-mono tracking-wider uppercase hover:bg-foreground hover:text-background transition-colors shadow-sm px-6 py-2.5 h-10 border border-foreground/20">
+            How It Works
+          </Link>
+
+          <Link href="/architecture" className="group flex items-center bg-muted text-foreground text-sm font-mono tracking-wider uppercase hover:bg-foreground hover:text-background transition-colors shadow-sm px-6 py-2.5 h-10 border border-foreground/20">
+            Architecture
           </Link>
         </motion.div>
       </div>
