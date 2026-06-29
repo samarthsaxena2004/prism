@@ -3,6 +3,7 @@
 import { Cpu } from "lucide-react"
 import { motion } from "framer-motion"
 import { ThemeToggle } from "@/components/theme-toggle"
+import Link from "next/link"
 
 export function Navbar() {
   return (
@@ -22,8 +23,8 @@ export function Navbar() {
             className="flex items-center gap-3"
           >
             <Cpu size={16} strokeWidth={1.5} />
-            <span className="text-xs font-mono tracking-[0.15em] uppercase font-bold">
-              SYS.INT
+            <span className="text-lg font-pixel uppercase tracking-tight">
+              Consumer AI
             </span>
           </motion.div>
 
@@ -58,19 +59,15 @@ export function Navbar() {
             className="flex items-center gap-4"
           >
             <ThemeToggle />
-            <a
-              href="#"
-              className="hidden sm:block text-xs font-mono tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors duration-200"
-            >
-              Log In
-            </a>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-foreground text-background px-4 py-2 text-xs font-mono tracking-widest uppercase"
-            >
-              Request Demo
-            </motion.button>
+            <Link href="/analyze">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-foreground text-background px-4 py-2 text-xs font-mono tracking-widest uppercase"
+              >
+                Try Prism
+              </motion.button>
+            </Link>
           </motion.div>
         </div>
       </nav>
