@@ -48,13 +48,8 @@ if _fallback_key:
             
     client.chat.completions.create = _fallback_create
 
-async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str, form_type: str = "medical-records"):
-    """Yields SSE event dicts for the full Cerebras 5-agent pipeline.
-
-    The GPU side runs in parallel and is owned by main.py — it streams its own
-    events (engine: 'gpu') and emits the final `speed_data`, so this function
-    only handles the Cerebras half.
-    """
+async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str, form_type: str = "general", note: str | None = None):
+    """Yields SSE event dicts representing agent states and final output."""
     pipeline_start = time.time()
     timings: dict[str, dict] = {}
 
@@ -70,12 +65,29 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str, fo
     yield {"agent": "compass", "type": "status", "content": prompts["STATUS"]["compass"]}
     yield {"agent": "echo", "type": "status", "content": prompts["STATUS"]["echo"]}
 
+    # ── GATEKEEPER ────────────────────────────────────────────────────
+    # 1. Fast local OCR
+    yield {"agent": "sage", "type": "status", "content": "Running OCR extraction..."}
+    extracted_text = extract_text_from_image(image_b64)
+
+    # 2. Fast Cerebras validation check
+    yield {"agent": "sage", "type": "status", "content": "Validating template fit..."}
+    gk_res = await _gatekeeper_check(extracted_text, form_type)
+    
+    if not gk_res.get("match", True) and gk_res.get("confidence", 0) >= 0.85:
+        suggested = gk_res.get("suggested_template", "another")
+        err_msg = f"This is a {form_type} expert. Please select {suggested} expert."
+        yield {"type": "gatekeeper_reject", "content": err_msg}
+        return
+
+    yield {"agent": "sage", "type": "status", "content": prompts.get("STATUS", {}).get("sage", "Extracting data...")}
+
     # ── SAGE ──────────────────────────────────────────────────────────
 
     sage_start = time.time()
     sage_result = None
     sage_timing = {}
-    async for event in _sage_stream(image_b64, prompts["SAGE"]):
+    async for event in _sage_stream(extracted_text, prompts.get("SAGE", "Extract fields into JSON.")):
         if isinstance(event, dict) and event.get("final"):
             sage_result = event["data"]
             sage_timing = event.get("timing", {})
@@ -160,7 +172,27 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str, fo
     echo_start = time.time()
     echo_content = ""
     echo_timing = {}
-    async for event in _echo_stream(sage_result, oracle_result, sentinel_result, compass_result, prompts["ECHO"]):
+    echo_prompt = prompts.get("ECHO", "Summarize the final insights.")
+    
+    if note and note.strip():
+        echo_prompt += f"\n\nCRITICAL DIRECTIVE: The user explicitly asked the following question: '{note}'. You MUST include a dedicated 'Strategic Insight' or 'Direct Answer' section at the top of the report that directly answers this question using the extracted data."
+
+    echo_prompt += """\n\nCRITICAL VISUALIZATION REQUIREMENT:
+At the absolute end of your markdown response, you MUST append a JSON block containing visualization data appropriate for this category.
+For Medical Records/Dialysis: Output a Radar chart for Vitals.
+Format EXACTLY like this (use ```json visualize):
+```json visualize
+{
+  "type": "medical_radar",
+  "data": [
+    {"subject": "Systolic BP", "value": 140, "fullMark": 200},
+    {"subject": "Diastolic BP", "value": 90, "fullMark": 150},
+    {"subject": "Heart Rate", "value": 85, "fullMark": 150}
+  ]
+}
+```"""
+
+    async for event in _echo_stream(sage_result, oracle_result, sentinel_result, compass_result, echo_prompt):
         if isinstance(event, dict) and event.get("final"):
             echo_timing = event.get("timing", {})
         else:
@@ -236,33 +268,72 @@ def _parse_json(text: str) -> dict:
     return {"raw_text": text}
 
 
-async def _sage_stream(image_b64: str, prompt: str):
+import io
+from PIL import Image
+import pytesseract
+
+def extract_text_from_image(image_b64: str) -> str:
+    """Synchronously extracts text from b64 image using pytesseract."""
+    import io, base64, pytesseract
+    from PIL import Image
+    try:
+        b64_data = image_b64.split(",", 1)[1] if "," in image_b64 else image_b64
+        img = Image.open(io.BytesIO(base64.b64decode(b64_data)))
+        return pytesseract.image_to_string(img).strip()
+    except Exception as e:
+        return f"[OCR Failed: {e}]"
+
+async def _gatekeeper_check(extracted_text: str, form_type: str) -> dict:
+    """Uses Cerebras to determine if the extracted text matches the form type with high confidence."""
+    prompt = f"""You are a Gatekeeper expert. Analyze the following text extracted from a document. 
+Your job is to determine if this document is likely a '{form_type}' document.
+If you have >85% confidence that this document is completely unrelated to a {form_type}, you must reject it and suggest the correct category if possible (e.g., medical-records, financial-reports, insurance-policy, government-forms, logistics).
+Otherwise, accept it.
+
+Output ONLY valid JSON in this format:
+{{"match": true/false, "confidence": 0.95, "suggested_template": "medical-records"}}
+
+EXTRACTED TEXT:
+{extracted_text[:3000]}
+"""
+    try:
+        res = client.chat.completions.create(
+            model="gemma-4-31b",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150,
+            response_format={"type": "json_object"}
+        )
+        text = res.choices[0].message.content or ""
+        return json.loads(text)
+    except Exception as e:
+        print(f"Gatekeeper failed: {e}")
+        return {"match": True, "confidence": 1.0, "suggested_template": form_type}
+
+async def _sage_stream(extracted_text: str, prompt: str):
     def _call():
-        # Ensure it has a data URL prefix
-        url = image_b64 if image_b64.startswith("data:") else f"data:image/jpeg;base64,{image_b64}"
+        sage_prompt = prompt + f"\n\nHere is the raw text extracted from the document via OCR:\n\n{extracted_text}"
         return client.chat.completions.create(
             model="gemma-4-31b",
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": url}},
-                    {"type": "text", "text": prompt},
-                ],
-            }],
-            max_tokens=2000,
+            messages=[{"role": "user", "content": sage_prompt}],
+            stream=True,
+            max_tokens=1500,
         )
+    
+    start = time.time()
+    stream = await asyncio.to_thread(_call)
+    
+    full_text = ""
+    for chunk in stream:
+        if chunk.choices and chunk.choices[0].delta.content:
+            content = chunk.choices[0].delta.content
+            full_text += content
+            yield content
 
-    try:
-        response = await asyncio.to_thread(_call)
-        text = response.choices[0].message.content or ""
-        timing = _extract_timing(response)
-    except Exception as e:
-        yield {"final": True, "data": {"raw_text": "", "error": str(e)}, "timing": {}}
-        return
+    def _calc_tps(text, start_time):
+        dt = time.time() - start_time
+        return round(len(text.split()) / dt) if dt > 0 else 0
 
-    for i in range(0, len(text), 4):
-        yield text[i:i + 4]
-    yield {"final": True, "data": _parse_json(text), "timing": timing}
+    yield {"final": True, "data": _parse_json(full_text), "timing": {"tps": _calc_tps(full_text, start)}}
 
 
 async def _compass_stream(sage, oracle, sentinel, prompt_str: str):

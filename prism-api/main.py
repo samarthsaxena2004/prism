@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from pipeline import run_prism_pipeline
 from comparison import run_gpu_pipeline
-from storage import upload_image, save_document, get_records, get_record_detail
+from storage import upload_image, save_document, get_records, get_record_detail, get_documents, get_document_detail
 
 app = FastAPI(title="Prism API", version="1.0.0")
 
@@ -31,6 +31,7 @@ class AnalyzeRequest(BaseModel):
     image_b64: str
     facility_name: str = "Demo Facility"
     form_type: str = "medical-records"
+    note: str | None = None
 
 
 @app.get("/health")
@@ -59,6 +60,28 @@ async def upload_form(file: UploadFile = File(...)):
     return {"image_b64": b64, "filename": file.filename, "size": len(content)}
 
 
+from PIL import Image
+import io
+
+def normalize_image_b64(b64_str: str) -> str:
+    """If the image is WebP (or just to be safe), convert it to JPEG to satisfy Llama 3.2 Vision requirements."""
+    if not b64_str.startswith("data:"):
+        return b64_str
+        
+    try:
+        header, b64_data = b64_str.split(",", 1)
+        if "image/webp" in header.lower():
+            image_bytes = base64.b64decode(b64_data)
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            out_io = io.BytesIO()
+            img.save(out_io, format="JPEG")
+            new_b64 = base64.b64encode(out_io.getvalue()).decode()
+            return f"data:image/jpeg;base64,{new_b64}"
+    except Exception as e:
+        print(f"Failed to normalize image format: {e}")
+        
+    return b64_str
+
 @app.post("/api/analyze")
 async def analyze_document(req: AnalyzeRequest):
     """
@@ -71,6 +94,7 @@ async def analyze_document(req: AnalyzeRequest):
     `engine: "cerebras" | "gpu"` tag so the frontend can route them to the
     correct execution column.
     """
+    req.image_b64 = normalize_image_b64(req.image_b64)
     doc_id = str(uuid.uuid4())
 
     try:
@@ -91,6 +115,7 @@ async def analyze_document(req: AnalyzeRequest):
                         doc_id=doc_id,
                         facility_name=req.facility_name,
                         form_type=req.form_type,
+                        note=req.note
                     )
                 else:
                     from research_pipeline import run_research_pipeline
@@ -99,6 +124,7 @@ async def analyze_document(req: AnalyzeRequest):
                         doc_id=doc_id,
                         facility_name=req.facility_name,
                         form_type=req.form_type,
+                        note=req.note
                     )
                 
                 async for ev in pipeline_coroutine:
@@ -111,7 +137,7 @@ async def analyze_document(req: AnalyzeRequest):
 
         async def pump_gpu():
             try:
-                async for ev in run_gpu_pipeline(req.image_b64, req.form_type):
+                async for ev in run_gpu_pipeline(req.image_b64, req.form_type, note=req.note):
                     if ev.get("type") == "gpu_pipeline_done":
                         # Translate to the frontend's existing speed_data shape.
                         model_short = (ev.get("model") or "gpu").split("/")[-1].split(":")[0].upper()
@@ -150,7 +176,12 @@ async def analyze_document(req: AnalyzeRequest):
             while finished < 2:
                 ev = await queue.get()
                 t = ev.get("type")
-                if t in ("_cerebras_finished", "_gpu_finished"):
+                if t == "_cerebras_finished":
+                    finished += 1
+                    cerebras_ms = int((time.time() - start_time) * 1000)
+                    yield f"data: {json.dumps({'type': 'pipeline_done', 'total_ms': cerebras_ms, 'doc_id': doc_id})}\n\n"
+                    continue
+                if t == "_gpu_finished":
                     finished += 1
                     continue
                 yield f"data: {json.dumps(ev)}\n\n"
@@ -184,5 +215,21 @@ async def list_records(limit: int = 20, offset: int = 0):
 async def get_record(record_id: str):
     try:
         return await get_record_detail(record_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/admin/workflows")
+async def list_admin_workflows(limit: int = 50, offset: int = 0):
+    try:
+        return await get_documents(limit=limit, offset=offset)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/workflows/{doc_id}")
+async def get_admin_workflow(doc_id: str):
+    try:
+        return await get_document_detail(doc_id)
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
