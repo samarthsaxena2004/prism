@@ -245,10 +245,10 @@ export function ChatInput({
               disabled={!canSend}
               aria-label="Send message"
               className={cn(
-                'flex size-8 items-center justify-center transition-all border-2 rounded-lg border-foreground',
+                'flex size-9 items-center justify-center transition-all rounded-xl border border-white/10',
                 canSend
-                  ? 'bg-[#ea580c] text-background hover:scale-105 active:scale-95'
-                  : 'cursor-not-allowed bg-muted text-muted-foreground/50',
+                  ? 'bg-[var(--processing)] text-white shadow-[0_4px_14px_rgba(204,120,92,0.5),inset_0_2px_1px_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(204,120,92,0.4),inset_0_2px_1px_rgba(255,255,255,0.2)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_3px_5px_rgba(0,0,0,0.2)]'
+                  : 'cursor-not-allowed bg-secondary/80 text-muted-foreground shadow-[0_4px_10px_rgba(0,0,0,0.1),inset_0_2px_1px_rgba(255,255,255,0.05)]',
               )}
             >
               <ArrowUp className="size-4" strokeWidth={2.5} aria-hidden="true" />

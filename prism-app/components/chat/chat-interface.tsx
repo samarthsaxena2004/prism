@@ -27,6 +27,7 @@ export function ChatInterface() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const endRef = useRef<HTMLDivElement>(null)
   
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined)
   const [processing, setProcessing] = useState(false)
   const [done, setDone] = useState(false)
   const [cerebrasDone, setCerebrasDone] = useState(false)
@@ -35,6 +36,7 @@ export function ChatInterface() {
   const [geminiFailed, setGeminiFailed] = useState(false)
   const [cerebrasTps, setCerebrasTps] = useState<number | null>(null)
   const [geminiTps, setGeminiTps] = useState<number | null>(null)
+  const [baselineName, setBaselineName] = useState<string>("SINGLE AGENT — GPU")
   const [docId, setDocId] = useState<string | null>(null)
   const [insights, setInsights] = useState<Insights | null>(null)
 
@@ -69,6 +71,7 @@ export function ChatInterface() {
     setGeminiFailed(false)
     setCerebrasTps(null)
     setGeminiTps(null)
+    setBaselineName("SINGLE AGENT — GPU")
     setProcessing(false)
     setDone(false)
     setCerebrasDone(false)
@@ -84,6 +87,11 @@ export function ChatInterface() {
   async function handleSend(value: string, images: string[]) {
     if (processing) return
     if (!images.length && !value) return
+    
+    if (!selectedCategory) {
+      alert("Please select a template (Medical Records, Insurance Claims, etc.) before uploading a document.")
+      return
+    }
 
     reset()
     await new Promise((r) => setTimeout(r, 50))
@@ -102,13 +110,17 @@ export function ChatInterface() {
     ])
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
-    const imageB64 = images[0]?.split(',')[1] // Get base64 part
+    const imageB64 = images[0] || "" // Send full data URL to preserve MIME type
 
     try {
       const res = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_b64: imageB64 || "", facility_name: "Demo Facility" }),
+        body: JSON.stringify({ 
+          image_b64: imageB64 || "", 
+          facility_name: "Demo Facility",
+          form_type: selectedCategory 
+        }),
         signal: abortRef.current.signal,
       })
 
@@ -147,6 +159,7 @@ export function ChatInterface() {
             if (ev.type === 'speed_data') {
               // Real GPU baseline time + measured throughput (or failure) arrive here.
               geminiSettledRef.current = true
+              if (ev.baseline_name) setBaselineName(ev.baseline_name)
               if (ev.gemini_ms) {
                 setGeminiMs(ev.gemini_ms)
                 if (typeof ev.gemini_tps === 'number') setGeminiTps(ev.gemini_tps)
@@ -319,6 +332,7 @@ export function ChatInterface() {
                     cerebrasTps={cerebrasTps}
                     geminiTps={geminiTps}
                     cerebrasDone={cerebrasDone || done}
+                    baselineName={baselineName}
                   />
                 </motion.div>
               )}
@@ -393,7 +407,10 @@ export function ChatInterface() {
               <ChatInput onSend={handleSend} processing={processing} />
             </motion.div>
 
-            <TemplateCards />
+            <TemplateCards 
+              selectedId={selectedCategory} 
+              onSelect={setSelectedCategory} 
+            />
           </div>
         </main>
       )}
@@ -402,9 +419,9 @@ export function ChatInterface() {
         <motion.div
           layoutId="composer"
           transition={spring}
-          className="absolute bottom-0 left-0 right-0 border-t-2 border-foreground bg-background/90 backdrop-blur-xl"
+          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/95 to-transparent pt-12 z-20 pointer-events-none"
         >
-          <div className="mx-auto w-full max-w-3xl px-4 pb-5 pt-4">
+          <div className="mx-auto w-full max-w-3xl px-4 pb-5 pointer-events-auto drop-shadow-2xl">
             <ChatInput onSend={handleSend} docked processing={processing} />
             <p className="mt-2.5 text-center text-[11px] text-muted-foreground/70">
               Prism orchestrates a 5-agent pipeline. Outputs require clinician

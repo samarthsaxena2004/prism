@@ -30,8 +30,8 @@ const templates = [
     color: '#e6b66e',
   },
   {
-    id: 'emr-records',
-    label: 'EMR Records',
+    id: 'financial-reports',
+    label: 'Financial Reports',
     icon: Building2,
     color: '#c9a6d4',
   },
@@ -43,7 +43,12 @@ const templates = [
   },
 ]
 
-export function TemplateCards() {
+interface TemplateCardsProps {
+  selectedId?: string;
+  onSelect?: (id: string) => void;
+}
+
+export function TemplateCards({ selectedId, onSelect }: TemplateCardsProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   return (
@@ -56,7 +61,8 @@ export function TemplateCards() {
       <div className="relative flex justify-center items-center h-40 w-full max-w-xl mx-auto">
         {templates.map((template, index) => {
           const Icon = template.icon
-          const isHovered = hoveredIndex === index
+          const isSelected = selectedId === template.id
+          const isHovered = hoveredIndex === index || isSelected
           const offset = index - 2 // -2, -1, 0, 1, 2
 
           // Base styling for the fan
@@ -68,6 +74,7 @@ export function TemplateCards() {
           return (
             <motion.button
               key={template.id}
+              onClick={() => onSelect?.(template.id)}
               onHoverStart={() => setHoveredIndex(index)}
               onHoverEnd={() => setHoveredIndex(null)}
               initial={false}
@@ -85,7 +92,9 @@ export function TemplateCards() {
                 mass: 0.8,
               }}
               className={`absolute w-36 h-32 rounded-xl border-2 flex flex-col items-center justify-center p-3 cursor-pointer transition-shadow
-                ${isHovered 
+                ${isSelected
+                  ? 'bg-card border-[#4ade80] shadow-[4px_4px_0_0_#4ade80]'
+                  : isHovered 
                   ? 'bg-card border-foreground shadow-[4px_4px_0_0_var(--color-foreground)]' 
                   : 'bg-card border-foreground/30 hover:border-foreground/60 hover:shadow-[2px_2px_0_0_var(--color-foreground)]'
                 }`}
@@ -109,7 +118,7 @@ export function TemplateCards() {
       </div>
 
       <p className="mt-12 font-mono uppercase text-[11px] tracking-widest text-muted-foreground">
-        ...or start a blank project &rarr;
+        &uarr; Please select a template above to start
       </p>
     </div>
   )

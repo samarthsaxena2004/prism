@@ -8,6 +8,7 @@ interface Props {
   cerebrasTps?: number | null;
   geminiTps?: number | null;
   cerebrasDone: boolean;
+  baselineName?: string;
 }
 
 export default function SpeedPanel({
@@ -17,6 +18,7 @@ export default function SpeedPanel({
   cerebrasTps = null,
   geminiTps = null,
   cerebrasDone,
+  baselineName,
 }: Props) {
   const [geminiLive, setGeminiLive] = useState(cerebrasMs);
   const geminiRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -68,10 +70,10 @@ export default function SpeedPanel({
         </p>
       </div>
 
-      {/* Gemini baseline panel */}
+      {/* GPU baseline panel */}
       <div className="rounded-2xl border-2 border-border bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] font-mono font-bold text-muted-foreground tracking-widest">1 AGENT — GEMINI 2.5 FLASH</span>
+          <span className="text-[10px] font-mono font-bold text-muted-foreground tracking-widest">{baselineName || "1 AGENT — GPU"}</span>
           <span className="text-[9px] text-muted-foreground/70 font-mono">
             {geminiTps != null ? `${geminiTps.toLocaleString()} tok/s measured` : "Google hosted"}
           </span>
