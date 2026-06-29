@@ -1,16 +1,15 @@
 import asyncio
 import json
-from prompts import SENTINEL_SYSTEM_PROMPT
 
 
-async def run_sentinel(client, sage_result: dict) -> tuple[dict, dict]:
+async def run_sentinel(client, sage_result: dict, prompt: str) -> tuple[dict, dict]:
     """Detect anomalies and data quality issues. Returns (result_dict, timing_dict)."""
     def _call():
         response = client.chat.completions.create(
             model="gemma-4-31b",
             messages=[{
                 "role": "user",
-                "content": f"{SENTINEL_SYSTEM_PROMPT}\n\nEXTRACTED DATA:\n{json.dumps(sage_result, indent=2)}"
+                "content": f"{prompt}\n\nEXTRACTED DATA:\n{json.dumps(sage_result, indent=2)}"
             }],
             max_tokens=1500,
         )

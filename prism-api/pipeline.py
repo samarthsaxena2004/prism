@@ -26,33 +26,47 @@ from agents.oracle import run_oracle
 from agents.sentinel import run_sentinel
 from storage import save_agent_output, save_record
 from insights import compute_insights
-from prompts import SAGE_SYSTEM_PROMPT, COMPASS_SYSTEM_PROMPT, ECHO_SYSTEM_PROMPT
+from prompts import get_prompts_for_category
 
 client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY", ""))
 
-# Hard ceiling on how long we keep the SSE stream open waiting for the GPU
-# baseline. A real Gemini extraction finishes well within this; if it doesn't,
+# Speed comparison: the baseline is fired at pipeline start and awaited to
+# finish here. We cap the wait at 60s so if the user puts in a bad API key or
+# the backend is overloaded, we don't stall the final result forever.
+# A real API call finishes well within this; if it doesn't,
 # we stop waiting and report the baseline as unavailable rather than hanging.
+# Kept GEMINI_MAX_WAIT_S name for compatibility.
 GEMINI_MAX_WAIT_S = 60
 
 
-async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
+async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str, form_type: str = "medical-records"):
     """Yields SSE event dicts for the full 5-agent pipeline."""
-    from comparison import run_gemini_baseline
+    from comparison import run_baseline
 
     pipeline_start = time.time()
     timings: dict[str, dict] = {}
 
-    # Fire Gemini baseline in the background immediately (true parallel start)
-    gemini_task = asyncio.create_task(run_gemini_baseline(image_b64))
+    # Get category specific prompts
+    prompts = get_prompts_for_category(form_type)
+
+    # Fire GPU baseline in the background immediately (true parallel start)
+    baseline_task = asyncio.create_task(run_baseline(image_b64))
+
+    # ── WAKE UP ALL AGENTS (UI UX) ────────────────────────────────────
+    # We yield initial statuses for all agents so the UI shows them all
+    # initializing/working simultaneously, rather than sitting idle.
+    yield {"agent": "sage", "type": "status", "content": prompts["STATUS"]["sage"]}
+    yield {"agent": "oracle", "type": "status", "content": prompts["STATUS"]["oracle"]}
+    yield {"agent": "sentinel", "type": "status", "content": prompts["STATUS"]["sentinel"]}
+    yield {"agent": "compass", "type": "status", "content": prompts["STATUS"]["compass"]}
+    yield {"agent": "echo", "type": "status", "content": prompts["STATUS"]["echo"]}
 
     # ── SAGE ──────────────────────────────────────────────────────────
-    yield {"agent": "sage", "type": "status", "content": "Reading form structure and extracting all visible fields..."}
 
     sage_start = time.time()
     sage_result = None
     sage_timing = {}
-    async for event in _sage_stream(image_b64):
+    async for event in _sage_stream(image_b64, prompts["SAGE"]):
         if isinstance(event, dict) and event.get("final"):
             sage_result = event["data"]
             sage_timing = event.get("timing", {})
@@ -81,13 +95,13 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
     await save_agent_output(doc_id, "sage", sage_result, sage_ms)
 
     # ── ORACLE + SENTINEL (parallel) ──────────────────────────────────
-    yield {"agent": "oracle", "type": "status", "content": "Validating values against clinical reference ranges..."}
-    yield {"agent": "sentinel", "type": "status", "content": "Checking for inconsistencies and anomalies..."}
+    yield {"agent": "oracle", "type": "status", "content": prompts["STATUS"]["oracle"]}
+    yield {"agent": "sentinel", "type": "status", "content": prompts["STATUS"]["sentinel"]}
 
     parallel_start = time.time()
     (oracle_result, oracle_timing), (sentinel_result, sentinel_timing) = await asyncio.gather(
-        run_oracle(client, sage_result or {}),
-        run_sentinel(client, sage_result or {}),
+        run_oracle(client, sage_result or {}, prompts["ORACLE"]),
+        run_sentinel(client, sage_result or {}, prompts["SENTINEL"]),
     )
     oracle_ms = sentinel_ms = int((time.time() - parallel_start) * 1000)
     timings["oracle"] = oracle_timing
@@ -112,12 +126,12 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
     await save_agent_output(doc_id, "sentinel", sentinel_result, sentinel_ms)
 
     # ── COMPASS ───────────────────────────────────────────────────────
-    yield {"agent": "compass", "type": "status", "content": "Structuring into standardized database record..."}
+    yield {"agent": "compass", "type": "status", "content": prompts["STATUS"]["compass"]}
 
     compass_start = time.time()
     compass_result = None
     compass_timing = {}
-    async for event in _compass_stream(sage_result, oracle_result, sentinel_result):
+    async for event in _compass_stream(sage_result, oracle_result, sentinel_result, prompts["COMPASS"]):
         if isinstance(event, dict) and event.get("final"):
             compass_result = event["data"]
             compass_timing = event.get("timing", {})
@@ -132,12 +146,12 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
     await save_agent_output(doc_id, "compass", compass_result, compass_ms)
 
     # ── ECHO ──────────────────────────────────────────────────────────
-    yield {"agent": "echo", "type": "status", "content": "Writing clinical intelligence brief..."}
+    yield {"agent": "echo", "type": "status", "content": prompts["STATUS"]["echo"]}
 
     echo_start = time.time()
     echo_content = ""
     echo_timing = {}
-    async for event in _echo_stream(sage_result, oracle_result, sentinel_result, compass_result):
+    async for event in _echo_stream(sage_result, oracle_result, sentinel_result, compass_result, prompts["ECHO"]):
         if isinstance(event, dict) and event.get("final"):
             echo_timing = event.get("timing", {})
         else:
@@ -186,13 +200,14 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
     # None means the baseline failed or never returned — the UI shows
     # "unavailable" rather than inventing a number.
     try:
-        gemini = await asyncio.wait_for(gemini_task, timeout=GEMINI_MAX_WAIT_S)
+        baseline = await asyncio.wait_for(baseline_task, timeout=GEMINI_MAX_WAIT_S)
     except Exception:
-        gemini = None
+        baseline = None
     yield {
         "type": "speed_data", "agent": "system",
-        "gemini_ms": gemini["ms"] if gemini else None,
-        "gemini_tps": gemini.get("tps") if gemini else None,
+        "gemini_ms": baseline["ms"] if baseline else None,
+        "gemini_tps": baseline.get("tps") if baseline else None,
+        "baseline_name": baseline.get("name") if baseline else "SINGLE AGENT — GPU"
     }
 
 
@@ -225,15 +240,17 @@ def _parse_json(text: str) -> dict:
     return {"raw_text": text}
 
 
-async def _sage_stream(image_b64: str):
+async def _sage_stream(image_b64: str, prompt: str):
     def _call():
+        # Ensure it has a data URL prefix
+        url = image_b64 if image_b64.startswith("data:") else f"data:image/jpeg;base64,{image_b64}"
         return client.chat.completions.create(
             model="gemma-4-31b",
             messages=[{
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
-                    {"type": "text", "text": SAGE_SYSTEM_PROMPT},
+                    {"type": "image_url", "image_url": {"url": url}},
+                    {"type": "text", "text": prompt},
                 ],
             }],
             max_tokens=2000,
@@ -252,8 +269,8 @@ async def _sage_stream(image_b64: str):
     yield {"final": True, "data": _parse_json(text), "timing": timing}
 
 
-async def _compass_stream(sage, oracle, sentinel):
-    prompt = f"""{COMPASS_SYSTEM_PROMPT}
+async def _compass_stream(sage, oracle, sentinel, prompt_str: str):
+    prompt = f"""{prompt_str}
 
 SAGE EXTRACTION:
 {json.dumps(sage, indent=2) if sage else 'No data'}
@@ -286,8 +303,8 @@ Now produce the clean structured output JSON."""
     yield {"final": True, "data": _parse_json(text), "timing": timing}
 
 
-async def _echo_stream(sage, oracle, sentinel, compass):
-    prompt = f"""{ECHO_SYSTEM_PROMPT}
+async def _echo_stream(sage, oracle, sentinel, compass, prompt_str: str):
+    prompt = f"""{prompt_str}
 
 EXTRACTED DATA: {json.dumps(compass, indent=2) if compass else json.dumps(sage, indent=2)}
 CLINICAL FLAGS: {json.dumps(oracle, indent=2) if oracle else 'None'}

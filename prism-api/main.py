@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from pipeline import run_prism_pipeline
-from comparison import run_gemini_baseline
+from comparison import run_baseline
 from storage import upload_image, save_document, get_records, get_record_detail
 
 app = FastAPI(title="Prism API", version="1.0.0")
@@ -65,7 +65,7 @@ async def analyze_document(req: AnalyzeRequest):
 
         # Fire Gemini baseline immediately — runs in true parallel with the Cerebras pipeline.
         # We start it here so the frontend timer reflects real wall-clock elapsed, not pipeline time.
-        gemini_task = asyncio.create_task(run_gemini_baseline(req.image_b64))
+        gemini_task = asyncio.create_task(run_baseline(req.image_b64))
 
         # ── Cerebras pipeline ────────────────────────────────────────────────
         try:
@@ -73,6 +73,7 @@ async def analyze_document(req: AnalyzeRequest):
                 image_b64=req.image_b64,
                 doc_id=doc_id,
                 facility_name=req.facility_name,
+                form_type=req.form_type,
             ):
                 yield f"data: {json.dumps(event)}\n\n"
                 await asyncio.sleep(0)
