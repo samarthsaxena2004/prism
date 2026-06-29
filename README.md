@@ -37,43 +37,45 @@ At **Cerebras speeds (12 seconds at 1,500 TPS)**, it becomes a **real-time inter
 
 ---
 
-## The Five Agents of Prism
+## Dynamic Agent Swarms
 
-Prism uses a highly orchestrated pipeline of 5 specialized agents. Each agent relies on the output of the previous ones, making it a true **Multiverse Agent** swarm that dynamically adapts to the selected template.
+Prism uses highly orchestrated pipelines of specialized agents. Each agent relies on the output of the previous ones, making it a true **Multiverse Agent** swarm that dynamically adapts to the selected template.
+
+### Pipeline 1: The Clinical Swarm (Medical & Dialysis)
+For complex medical document digitization, Prism triggers a 5-agent pipeline:
 
 ```mermaid
 graph TD
     A[Handwritten Form] -->|Base64 Image| B(SAGE: Vision Extractor)
     B --> C(ORACLE: Domain Validator)
-    B --> D(SENTINEL: Anomaly Detector)
+    B --> D(SENTINEL: Anomaly Detection)
     C --> E(COMPASS: Data Structurer)
     D --> E
     E --> F(ECHO: Intelligence Brief)
-    F --> G[(Supabase)]
 ```
 
-1. **SAGE (Vision Extractor)**
-   - **Role**: Reads the raw base64 image of the handwritten form.
-   - **Model**: Gemma 4 31B Vision.
-   - **Output**: Unstructured but highly accurate text extraction of fields.
-   
-2. **ORACLE (Domain Validator)**
-   - **Role**: Analyzes the extracted data against domain-specific logic (medical coherence, financial regulations, insurance policies).
-   - **Model**: Gemma 4 31B Text.
-   - *Runs in parallel with Sentinel.*
+1. **SAGE (Vision Extractor)**: Reads the raw base64 image of the handwritten form using Gemma 4 31B Vision.
+2. **ORACLE (Domain Validator)**: Analyzes the extracted data against medical coherence and clinical rules. *(Runs in parallel with Sentinel)*
+3. **SENTINEL (Anomaly Detector)**: Scans for out-of-bounds metrics (e.g., critical blood pressure drops). *(Runs in parallel with Oracle)*
+4. **COMPASS (Data Structurer)**: Takes the parallel outputs and conforms them into strict, database-ready JSON.
+5. **ECHO (Intelligence Brief)**: Synthesizes the pipeline into a human-readable clinical brief.
 
-3. **SENTINEL (Anomaly Detector)**
-   - **Role**: Scans for out-of-bounds metrics (e.g., critical blood pressure drops, mismatched financial totals, missing logistics signatures).
-   - **Model**: Gemma 4 31B Text.
-   - *Runs in parallel with Oracle.*
+### Pipeline 2: The Enterprise Swarm (Financial, Govt, Logistics)
+For broader enterprise datasets, Prism routes to a rapid 4-agent research pipeline:
 
-4. **COMPASS (Data Structurer)**
-   - **Role**: Takes the output of Sage, Oracle, and Sentinel and conforms it into strict, database-ready JSON.
-   - **Model**: Gemma 4 31B Text.
+```mermaid
+graph TD
+    A[Enterprise Document] -->|Extraction| B(SCOUT: Vision Extraction)
+    B --> C(RESEARCHER: Deep Web Search)
+    B --> D(NAVIGATOR: API Orchestrator)
+    C --> E(PUBLISHER: Artifact Generation)
+    D --> E
+```
 
-5. **ECHO (Intelligence Brief)**
-   - **Role**: Synthesizes the entire pipeline into a 120-word human-readable executive brief for the domain expert.
-   - **Model**: Gemma 4 31B Text.
+1. **SCOUT (Vision Extraction)**: Extracts primary entities and raw structured data from the document.
+2. **RESEARCHER (Deep Web Search)**: Scours public datasets and the web for entity verification. *(Runs in parallel with Navigator)*
+3. **NAVIGATOR (API Orchestrator)**: Queries external mapping and registry APIs for data enrichment. *(Runs in parallel with Researcher)*
+4. **PUBLISHER (Artifact Generation)**: Compiles the extracted and enriched data into a comprehensive interactive markdown report.
 
 ---
 
