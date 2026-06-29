@@ -48,27 +48,18 @@ if _fallback_key:
             
     client.chat.completions.create = _fallback_create
 
-# Speed comparison: the baseline is fired at pipeline start and awaited to
-# finish here. We cap the wait at 60s so if the user puts in a bad API key or
-# the backend is overloaded, we don't stall the final result forever.
-# A real API call finishes well within this; if it doesn't,
-# we stop waiting and report the baseline as unavailable rather than hanging.
-# Kept GEMINI_MAX_WAIT_S name for compatibility.
-GEMINI_MAX_WAIT_S = 60
-
-
 async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str, form_type: str = "medical-records"):
-    """Yields SSE event dicts for the full 5-agent pipeline."""
-    from comparison import run_baseline
+    """Yields SSE event dicts for the full Cerebras 5-agent pipeline.
 
+    The GPU side runs in parallel and is owned by main.py — it streams its own
+    events (engine: 'gpu') and emits the final `speed_data`, so this function
+    only handles the Cerebras half.
+    """
     pipeline_start = time.time()
     timings: dict[str, dict] = {}
 
     # Get category specific prompts
     prompts = get_prompts_for_category(form_type)
-
-    # Fire GPU baseline in the background immediately (true parallel start)
-    baseline_task = asyncio.create_task(run_baseline(image_b64))
 
     # ── WAKE UP ALL AGENTS (UI UX) ────────────────────────────────────
     # We yield initial statuses for all agents so the UI shows them all
@@ -213,20 +204,7 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str, fo
         "total_ms": pipeline_ms, "doc_id": doc_id,
         "cerebras_tps": insights.get("throughput_tps"),
     }
-
-    # ── Real GPU baseline result (measured, not faked) ────────────────
-    # None means the baseline failed or never returned — the UI shows
-    # "unavailable" rather than inventing a number.
-    try:
-        baseline = await asyncio.wait_for(baseline_task, timeout=GEMINI_MAX_WAIT_S)
-    except Exception:
-        baseline = None
-    yield {
-        "type": "speed_data", "agent": "system",
-        "gemini_ms": baseline["ms"] if baseline else None,
-        "gemini_tps": baseline.get("tps") if baseline else None,
-        "baseline_name": baseline.get("name") if baseline else "SINGLE AGENT — GPU"
-    }
+    # GPU comparison + speed_data emission is owned by main.py.
 
 
 # ── Streaming helpers ────────────────────────────────────────────────
