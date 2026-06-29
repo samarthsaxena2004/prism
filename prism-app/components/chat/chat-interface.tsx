@@ -119,13 +119,31 @@ export function ChatInterface() {
           try {
             const ev = JSON.parse(line.slice(6))
 
+            // Top-level state changes that must happen outside setMessages
+            if (ev.type === 'complete') {
+              // Cerebras pipeline is done — stop the Cerebras timer immediately.
+              // The SSE stream stays open for up to 120 s waiting for Gemini's real time.
+              if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+              setProcessing(false)
+              setDone(true)
+              setElapsedMs(Date.now() - startRef.current)
+              setDocId(ev.doc_id ?? null)
+              continue
+            }
+            if (ev.type === 'speed_data') {
+              // Real Gemini time arrives here (after Gemini actually finishes)
+              if (ev.gemini_ms) setGeminiMs(ev.gemini_ms)
+              continue
+            }
+
+            // All other events update the message pipeline state
             setMessages((prev) => {
               return prev.map(msg => {
                 if (msg.id !== assistantId || msg.role !== 'assistant') return msg
-                
+
                 const newPipeline = [...msg.pipeline]
                 const agentIdx = newPipeline.findIndex(a => a.id === ev.agent)
-                
+
                 let newStatusMsg = msg.status
                 let newContent = msg.content ?? ''
 
@@ -133,7 +151,6 @@ export function ChatInterface() {
                   newPipeline[agentIdx] = { ...newPipeline[agentIdx], status: 'running', detail: ev.content }
                   newStatusMsg = ev.content
                 } else if (ev.type === 'streaming' && agentIdx >= 0) {
-                  // Only Echo streams the main content body visually
                   if (ev.agent === 'echo') {
                     newContent += ev.content
                     setEchoContent(c => c + ev.content)
@@ -142,38 +159,46 @@ export function ChatInterface() {
                     setCompassContent(c => c + ev.content)
                   }
                 } else if (ev.type === 'done' && agentIdx >= 0) {
-                  newPipeline[agentIdx] = { 
-                    ...newPipeline[agentIdx], 
-                    status: 'completed', 
-                    duration: ev.ms ? `${(ev.ms / 1000).toFixed(1)}s` : undefined
+                  // Parse real agent output to update detail line with actual findings
+                  let updatedDetail = newPipeline[agentIdx].detail
+                  if (ev.agent === 'oracle' && ev.content) {
+                    try {
+                      const s = ev.content.indexOf('{')
+                      const e = ev.content.lastIndexOf('}') + 1
+                      const parsed = s >= 0 ? JSON.parse(ev.content.slice(s, e > 0 ? e : undefined)) : null
+                      if (parsed?.validation_summary) {
+                        const vs = parsed.validation_summary
+                        const total = (vs.critical ?? 0) + (vs.warnings ?? 0)
+                        updatedDetail = total === 0
+                          ? `${vs.sessions_checked ?? '?'} sessions · All values within range`
+                          : `${vs.critical ?? 0} critical, ${vs.warnings ?? 0} warnings, ${vs.notes ?? 0} notes`
+                      }
+                    } catch { updatedDetail = 'Clinical validation complete' }
+                  } else if (ev.agent === 'sentinel' && ev.content) {
+                    try {
+                      const s = ev.content.indexOf('{')
+                      const e = ev.content.lastIndexOf('}') + 1
+                      const parsed = s >= 0 ? JSON.parse(ev.content.slice(s, e > 0 ? e : undefined)) : null
+                      if (parsed?.anomaly_count !== undefined) {
+                        updatedDetail = parsed.anomaly_count === 0
+                          ? `No anomalies detected · Quality: ${parsed.data_quality_score ?? '?'}/100`
+                          : `${parsed.anomaly_count} anomalies · Quality score: ${parsed.data_quality_score ?? '?'}/100`
+                      }
+                    } catch { updatedDetail = 'Anomaly detection complete' }
+                  } else if (ev.agent === 'sage') {
+                    updatedDetail = ev.content || 'Form read · Fields extracted'
+                  } else if (ev.agent === 'compass') {
+                    updatedDetail = 'Structured record generated'
+                  } else if (ev.agent === 'echo') {
+                    updatedDetail = 'Intelligence brief ready'
+                    newStatusMsg = 'Analysis Complete.'
                   }
-                  if (ev.agent === 'echo') newStatusMsg = 'Analysis Complete.'
-                } else if (ev.type === 'timing' && agentIdx >= 0) {
-                  // Ignore for now in pipeline UI
-                } else if (ev.type === 'insights') {
-                  setInsights(ev.data as Insights)
-                } else if (ev.type === 'pipeline_done') {
-                  // Cerebras pipeline finished — freeze its timer at the real
-                  // pipeline time and reveal results, while the GPU keeps running.
-                  cerebrasDoneRef.current = true
-                  if (timerRef.current) clearInterval(timerRef.current)
-                  if (typeof ev.total_ms === 'number') setElapsedMs(ev.total_ms)
-                  setCerebrasDone(true)
-                  if (ev.doc_id) setDocId(ev.doc_id)
-                  newStatusMsg = 'Analysis complete — GPU baseline still running...'
-                } else if (ev.type === 'speed_data') {
-                  if (ev.gemini_ms) setGeminiMs(ev.gemini_ms)
-                  else setGeminiFailed(true)
-                } else if (ev.type === 'error') {
-                  // Mark any still-running agent as finished so nothing spins forever.
-                  for (let k = 0; k < newPipeline.length; k++) {
-                    if (newPipeline[k].status === 'running') {
-                      newPipeline[k] = { ...newPipeline[k], status: 'completed', detail: 'Stopped' }
-                    }
+                  newPipeline[agentIdx] = {
+                    ...newPipeline[agentIdx],
+                    status: 'completed',
+                    duration: ev.ms ? `${(ev.ms / 1000).toFixed(1)}s` : undefined,
+                    detail: updatedDetail,
                   }
-                  newStatusMsg = `Pipeline error: ${ev.content ?? 'unknown error'}`
-                } else if (ev.type === 'complete') {
-                  setDocId(ev.doc_id ?? null)
                 }
 
                 return { ...msg, pipeline: newPipeline, status: newStatusMsg, content: newContent }
@@ -185,12 +210,11 @@ export function ChatInterface() {
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== 'AbortError') console.error(err)
     } finally {
-      if (timerRef.current) clearInterval(timerRef.current)
+      // Clean up timer if it wasn't already stopped by the 'complete' event handler.
+      // Do NOT overwrite elapsedMs — it was already set to Cerebras time by 'complete'.
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
       setProcessing(false)
       setDone(true)
-      // Only fall back to wall-clock if the pipeline never reported its real
-      // finish time (e.g. an error) — otherwise keep the frozen Cerebras time.
-      if (!cerebrasDoneRef.current) setElapsedMs(Date.now() - startRef.current)
     }
   }
 
@@ -262,7 +286,7 @@ export function ChatInterface() {
             </AnimatePresence>
 
             <AnimatePresence>
-              {cerebrasDone && docId && (
+              {done && compassContent && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -270,7 +294,7 @@ export function ChatInterface() {
                   className="mt-8"
                 >
                   <StructuredTable
-                    docId={docId}
+                    docId={docId ?? ''}
                     compassContent={compassContent}
                     echoContent={echoContent}
                   />

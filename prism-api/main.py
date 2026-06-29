@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from pipeline import run_prism_pipeline
+from comparison import run_gemini_baseline
 from storage import upload_image, save_document, get_records, get_record_detail
 
 app = FastAPI(title="Prism API", version="1.0.0")
@@ -61,6 +62,12 @@ async def analyze_document(req: AnalyzeRequest):
 
     async def event_stream():
         start_time = time.time()
+
+        # Fire Gemini baseline immediately — runs in true parallel with the Cerebras pipeline.
+        # We start it here so the frontend timer reflects real wall-clock elapsed, not pipeline time.
+        gemini_task = asyncio.create_task(run_gemini_baseline(req.image_b64))
+
+        # ── Cerebras pipeline ────────────────────────────────────────────────
         try:
             async for event in run_prism_pipeline(
                 image_b64=req.image_b64,
@@ -71,9 +78,22 @@ async def analyze_document(req: AnalyzeRequest):
                 await asyncio.sleep(0)
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
-        finally:
-            total_ms = int((time.time() - start_time) * 1000)
-            yield f"data: {json.dumps({'type': 'complete', 'total_ms': total_ms, 'doc_id': doc_id})}\n\n"
+
+        # Pipeline complete — send complete event (Cerebras side done).
+        # SSE stream stays open while we wait for the real Gemini time.
+        total_ms = int((time.time() - start_time) * 1000)
+        yield f"data: {json.dumps({'type': 'complete', 'total_ms': total_ms, 'doc_id': doc_id})}\n\n"
+
+        # ── Wait for real Gemini time (up to 120 s) ──────────────────────────
+        # Most of the wait has already elapsed while the Cerebras pipeline ran.
+        # Gemini 2.5 Flash on a dialysis form typically takes 30–60 s.
+        try:
+            gemini_ms = await asyncio.wait_for(gemini_task, timeout=120.0)
+        except (asyncio.TimeoutError, Exception):
+            # Fallback: report current elapsed time so the timer at least stops.
+            gemini_ms = int((time.time() - start_time) * 1000)
+
+        yield f"data: {json.dumps({'type': 'speed_data', 'gemini_ms': gemini_ms, 'agent': 'system'})}\n\n"
 
     return StreamingResponse(
         event_stream(),

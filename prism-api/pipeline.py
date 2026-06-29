@@ -37,13 +37,6 @@ GEMINI_MAX_WAIT_S = 90
 
 async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
     """Yields SSE event dicts for the full 5-agent pipeline."""
-    from comparison import run_gemini_baseline
-
-    pipeline_start = time.time()
-    timings: dict[str, dict] = {}
-
-    # Fire Gemini baseline in the background immediately (true parallel start)
-    gemini_task = asyncio.create_task(run_gemini_baseline(image_b64))
 
     # ── SAGE ──────────────────────────────────────────────────────────
     yield {"agent": "sage", "type": "status", "content": "Reading form structure and extracting all visible fields..."}
@@ -60,7 +53,20 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
     sage_ms = int((time.time() - sage_start) * 1000)
     timings["sage"] = sage_timing
 
-    yield {"agent": "sage", "type": "done", "content": "", "ms": sage_ms, **sage_timing}
+    # Build a brief summary for the frontend to show in the agent detail line
+    sage_summary = ""
+    if isinstance(sage_result, dict):
+        sessions = sage_result.get("sessions") or []
+        patient = sage_result.get("header") or sage_result.get("patient") or {}
+        n = len(sessions) if isinstance(sessions, list) else 0
+        name = patient.get("patient_name") or patient.get("name") or ""
+        if n and name:
+            sage_summary = f"{n} sessions extracted · {name}"
+        elif n:
+            sage_summary = f"{n} sessions extracted"
+        else:
+            sage_summary = "Fields extracted"
+    yield {"agent": "sage", "type": "done", "content": sage_summary, "ms": sage_ms, **sage_timing}
     if sage_timing:
         yield {"type": "timing", "agent": "sage", **sage_timing}
 
@@ -145,31 +151,6 @@ async def run_prism_pipeline(image_b64: str, doc_id: str, facility_name: str):
         compass=compass_result,
         echo=echo_content,
     )
-
-    # ── Enterprise insight layer (deterministic, no extra model call) ──
-    pipeline_ms = int((time.time() - pipeline_start) * 1000)
-    insights = compute_insights(
-        sage=sage_result,
-        oracle=oracle_result,
-        sentinel=sentinel_result,
-        compass=compass_result,
-        timings=timings,
-        pipeline_ms=pipeline_ms,
-    )
-    yield {"type": "insights", "agent": "system", "data": insights}
-
-    # Cerebras pipeline is fully done — freeze its timer in the UI now and reveal
-    # results, while the GPU baseline keeps running until it genuinely finishes.
-    yield {"type": "pipeline_done", "agent": "system", "total_ms": pipeline_ms, "doc_id": doc_id}
-
-    # ── Real GPU baseline result (measured, not faked) ────────────────
-    # None means the baseline failed or never returned — the UI shows
-    # "unavailable" rather than inventing a number.
-    try:
-        gemini_ms = await asyncio.wait_for(gemini_task, timeout=GEMINI_MAX_WAIT_S)
-    except Exception:
-        gemini_ms = None
-    yield {"type": "speed_data", "gemini_ms": gemini_ms, "agent": "system"}
 
 
 # ── Streaming helpers ────────────────────────────────────────────────
