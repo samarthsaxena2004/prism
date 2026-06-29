@@ -1,19 +1,21 @@
 """
 Standalone check that the Gemini speed-comparison baseline actually works.
 
-Run locally from prism-api/ (with your keys in prism-api/.env):
+IMPORTANT: run it with the interpreter that has your deps (miniconda), from
+prism-api/:
 
-    python diagnose_gemini.py            # uses a tiny generated test image
-    python diagnose_gemini.py form.jpg   # uses one of your own form images
+    /opt/miniconda3/bin/python3 diagnose_gemini.py
+    /opt/miniconda3/bin/python3 diagnose_gemini.py /Users/you/Documents/dialysis/1.png
 
-It exercises the EXACT same code path as the live app
-(comparison.run_gemini_baseline) and prints whether Gemini responded, how long
-it took, and its measured tokens/sec — so you can confirm the baseline is real
-rather than silently failing (which is what makes the GPU timer never settle).
+Plain `python` on macOS is usually Homebrew Python, which does NOT have
+google-generativeai installed — see prism-api/CLAUDE.md.
+
+Step 1 (always) does a tiny text-only call to confirm your key/model/network.
+Step 2 (only if you pass an image path) runs the EXACT baseline code path the
+live app uses and prints the measured wall-clock ms + tokens/sec.
 """
 import asyncio
 import base64
-import io
 import os
 import sys
 
@@ -22,16 +24,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def _make_test_image_b64() -> str:
-    from PIL import Image, ImageDraw
+def _probe_text() -> bool:
+    """Text-only connectivity / key / model check — no image, no Pillow needed."""
+    import google.generativeai as genai
 
-    img = Image.new("RGB", (480, 200), "white")
-    draw = ImageDraw.Draw(img)
-    draw.text((20, 80), "PRISM diagnostic form", fill="black")
-    draw.text((20, 110), "Patient: DEMO-0001   BP: 150/90   Wt: 62kg", fill="black")
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG")
-    return base64.b64encode(buf.getvalue()).decode()
+    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY", ""))
+    try:
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        resp = model.generate_content("Reply with exactly: OK")
+        print(f"Step 1 — text probe: ✅ Gemini replied: {(resp.text or '').strip()!r}")
+        return True
+    except Exception as e:
+        print(f"Step 1 — text probe: ❌ {type(e).__name__}: {e}")
+        return False
 
 
 async def main() -> None:
@@ -41,25 +46,37 @@ async def main() -> None:
         print("→ Set GOOGLE_API_KEY in prism-api/.env, then re-run.")
         return
 
-    if len(sys.argv) > 1:
-        with open(sys.argv[1], "rb") as f:
-            image_b64 = base64.b64encode(f.read()).decode()
-        print(f"Using image: {sys.argv[1]}")
-    else:
-        image_b64 = _make_test_image_b64()
-        print("Using generated test image")
+    ok = _probe_text()
+
+    # Step 2 only runs if an image path is supplied.
+    if len(sys.argv) <= 1:
+        if ok:
+            print("\nText path works. To test the real image baseline too, pass a form image:")
+            print("    /opt/miniconda3/bin/python3 diagnose_gemini.py /path/to/form.jpg")
+        else:
+            print("\nThe text probe failed — fix that first; it uses the same key/model the")
+            print("image baseline does. Common causes: invalid/region-locked key,")
+            print("gemini-2.5-flash not enabled for your key, or no network egress to")
+            print("generativelanguage.googleapis.com")
+        return
+
+    path = sys.argv[1]
+    if not os.path.exists(path):
+        print(f"\nStep 2 — image path: ❌ file not found: {path}")
+        print("Tip: your real forms live at /Users/samarthsaxena/Documents/dialysis/1.png")
+        return
+
+    with open(path, "rb") as f:
+        image_b64 = base64.b64encode(f.read()).decode()
+    print(f"\nStep 2 — image baseline on {path} (same path as the live app)...")
 
     from comparison import run_gemini_baseline
 
-    print("Calling Gemini 2.5 Flash (same path as the live app)...")
     result = await run_gemini_baseline(image_b64)
-
     if result is None:
-        print("RESULT: ❌ baseline FAILED — see the [gemini-baseline] line above for the reason.")
-        print("        Common causes: invalid/region-locked GOOGLE_API_KEY, model name not")
-        print("        enabled for your key, or no network egress to generativelanguage.googleapis.com")
+        print("Step 2 — image baseline: ❌ FAILED — see the [gemini-baseline] line above for why.")
     else:
-        print(f"RESULT: ✅ Gemini responded in {result['ms']}ms "
+        print(f"Step 2 — image baseline: ✅ {result['ms']}ms "
               f"({result['tps'] if result['tps'] is not None else '?'} tok/s measured)")
 
 
