@@ -106,7 +106,15 @@ export function ChatInterface() {
     setMessages((prev) => [
       ...prev,
       { id: `u-${now}`, role: 'user', content: value, images },
-      { id: assistantId, role: 'assistant', status: 'Validating documents...', pipeline: JSON.parse(JSON.stringify(INITIAL_PIPELINE)), content: '' },
+      { 
+        id: assistantId, 
+        role: 'assistant', 
+        status: 'Validating documents...', 
+        pipeline: JSON.parse(JSON.stringify(INITIAL_PIPELINE)), 
+        content: '',
+        gpuPipeline: JSON.parse(JSON.stringify(INITIAL_PIPELINE)),
+        gpuContent: ''
+      },
     ])
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
@@ -205,21 +213,26 @@ export function ChatInterface() {
               return prev.map(msg => {
                 if (msg.id !== assistantId || msg.role !== 'assistant') return msg
 
-                const newPipeline = [...msg.pipeline]
+                const isGpu = ev.engine === 'gpu'
+                const targetPipelineKey = isGpu ? 'gpuPipeline' : 'pipeline'
+                const targetContentKey = isGpu ? 'gpuContent' : 'content'
+                
+                // Fallback to empty array if somehow undefined
+                const newPipeline = [...(msg[targetPipelineKey] || [])]
                 const agentIdx = newPipeline.findIndex(a => a.id === ev.agent)
 
                 let newStatusMsg = msg.status
-                let newContent = msg.content ?? ''
+                let newContent = (msg[targetContentKey] as string) ?? ''
 
                 if (ev.type === 'status' && agentIdx >= 0) {
                   newPipeline[agentIdx] = { ...newPipeline[agentIdx], status: 'running', detail: ev.content }
-                  newStatusMsg = ev.content
+                  if (!isGpu) newStatusMsg = ev.content
                 } else if (ev.type === 'streaming' && agentIdx >= 0) {
                   if (ev.agent === 'echo') {
                     newContent += ev.content
-                    setEchoContent(c => c + ev.content)
+                    if (!isGpu) setEchoContent(c => c + ev.content)
                   }
-                  if (ev.agent === 'compass') {
+                  if (ev.agent === 'compass' && !isGpu) {
                     setCompassContent(c => c + ev.content)
                   }
                 } else if (ev.type === 'done' && agentIdx >= 0) {
@@ -255,7 +268,7 @@ export function ChatInterface() {
                     updatedDetail = 'Structured record generated'
                   } else if (ev.agent === 'echo') {
                     updatedDetail = 'Intelligence brief ready'
-                    newStatusMsg = 'Analysis Complete.'
+                    if (!isGpu) newStatusMsg = 'Analysis Complete.'
                   }
                   newPipeline[agentIdx] = {
                     ...newPipeline[agentIdx],
@@ -267,7 +280,7 @@ export function ChatInterface() {
                   }
                 }
 
-                return { ...msg, pipeline: newPipeline, status: newStatusMsg, content: newContent }
+                return { ...msg, [targetPipelineKey]: newPipeline, status: newStatusMsg, [targetContentKey]: newContent }
               })
             })
           } catch { /* skip */ }
@@ -311,6 +324,8 @@ export function ChatInterface() {
                       status={message.status}
                       content={message.content}
                       pipeline={message.pipeline}
+                      gpuPipeline={message.gpuPipeline}
+                      gpuContent={message.gpuContent}
                     />
                   )}
                 </motion.div>

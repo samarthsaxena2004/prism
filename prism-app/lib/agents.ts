@@ -76,4 +76,6 @@ export type ChatMessage =
       status: string
       content?: string
       pipeline: Agent[]
+      gpuPipeline?: Agent[]
+      gpuContent?: string
     }
