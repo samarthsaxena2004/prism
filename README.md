@@ -41,9 +41,16 @@ At **Cerebras speeds (12 seconds at 1,500 TPS)**, it becomes a **real-time inter
 
 Prism uses a highly orchestrated pipeline of 5 specialized agents. Each agent relies on the output of the previous ones, making it a true **Multiverse Agent** swarm that dynamically adapts to the selected template.
 
-<div align="center">
-  <img src="https://via.placeholder.com/800x300?text=Agent+Pipeline+Diagram" alt="Prism Agent Pipeline" />
-</div>
+```mermaid
+graph TD
+    A[Handwritten Form] -->|Base64 Image| B(SAGE: Vision Extractor)
+    B --> C(ORACLE: Domain Validator)
+    B --> D(SENTINEL: Anomaly Detector)
+    C --> E(COMPASS: Data Structurer)
+    D --> E
+    E --> F(ECHO: Intelligence Brief)
+    F --> G[(Supabase)]
+```
 
 1. **SAGE (Vision Extractor)**
    - **Role**: Reads the raw base64 image of the handwritten form.
@@ -97,18 +104,7 @@ Prism is built to be production-ready and scalable for enterprise systems.
 - **Frontend**: Next.js 14, React, TailwindCSS, Shadcn UI, Framer Motion
 - **Database**: Supabase (PostgreSQL) for persistent record storage
 
-### Pipeline Flow
 
-```mermaid
-graph TD
-    A[Handwritten Form] -->|Base64 Image| B(SAGE: Vision Extractor)
-    B --> C(ORACLE: Domain Validator)
-    B --> D(SENTINEL: Anomaly Detector)
-    C --> E(COMPASS: Data Structurer)
-    D --> E
-    E --> F(ECHO: Intelligence Brief)
-    F --> G[(Supabase)]
-```
 
 ---
 
